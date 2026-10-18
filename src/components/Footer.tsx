@@ -53,10 +53,9 @@ export function Footer({ setCurrentView, whatsappNumber }: FooterProps) {
             <ul className="space-y-2.5 text-sm">
               {[
                 { id: 'home', label: 'Home' },
-                { id: 'shop', label: 'Shop Furniture' },
-                { id: 'categories', label: 'Categories' },
+                { id: 'shop', label: 'Collections' },
                 { id: 'about', label: 'About Brand' },
-                { id: 'services', label: 'Interior Design Services' },
+                { id: 'services', label: 'Interior Design' },
                 { id: 'contact', label: 'Contact Us' },
               ].map((item) => (
                 <li key={item.id}>
