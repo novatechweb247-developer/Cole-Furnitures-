@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StoreData, Product, Category, Testimonial } from '../types';
-import { Plus, Edit, Trash2, Image as ImageIcon, Check, Save, ShieldCheck, Package, Grid, FileText, Star, ArrowLeft } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon, Check, Save, ShieldCheck, Package, Grid, FileText, Star, ArrowLeft, Inbox } from 'lucide-react';
 
 interface AdminCenterProps {
   storeData: StoreData;
@@ -8,8 +8,56 @@ interface AdminCenterProps {
   setCurrentView: (view: string) => void;
 }
 
+interface Enquiry {
+  id: string;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  message: string;
+  status: 'new' | 'contacted' | 'resolved';
+  created_at: string;
+}
+
 export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminCenterProps) {
-  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'content' | 'testimonials'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'content' | 'testimonials' | 'enquiries'>('products');
+  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
+  const [loadingEnquiries, setLoadingEnquiries] = useState(false);
+  const [enquiryError, setEnquiryError] = useState('');
+
+  useEffect(() => {
+    if (activeTab !== 'enquiries') return;
+    let cancelled = false;
+    setLoadingEnquiries(true);
+    setEnquiryError('');
+    fetch('/api/admin/enquiries', { cache: 'no-store', credentials: 'same-origin' })
+      .then(async response => {
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Could not load enquiries.');
+        if (!cancelled) setEnquiries(Array.isArray(result) ? result : []);
+      })
+      .catch(error => {
+        if (!cancelled) setEnquiryError(error instanceof Error ? error.message : 'Could not load enquiries.');
+      })
+      .finally(() => { if (!cancelled) setLoadingEnquiries(false); });
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
+  const updateEnquiryStatus = async (id: string, status: Enquiry['status']) => {
+    try {
+      const response = await fetch('/api/admin/enquiries/' + encodeURIComponent(id), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ status })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not update enquiry status.');
+      setEnquiries(current => current.map(enquiry => enquiry.id === id ? { ...enquiry, status } : enquiry));
+      setMessage('Enquiry status updated.');
+    } catch (error) {
+      setEnquiryError(error instanceof Error ? error.message : 'Could not update enquiry status.');
+    }
+  };
 
   // Product Form State
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -364,6 +412,7 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
           { id: 'categories', label: 'Categories', icon: Grid },
           { id: 'content', label: 'Homepage & Business Content', icon: FileText },
           { id: 'testimonials', label: 'Testimonials', icon: Star },
+          { id: 'enquiries', label: 'Enquiries', icon: Inbox },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -854,6 +903,63 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* TAB 5: PERSISTENT ENQUIRY INBOX */}
+      {activeTab === 'enquiries' && (
+        <div className="space-y-5">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#e7e5e4] shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-serif font-bold text-2xl text-[#1c1917]">Customer Enquiries</h3>
+                <p className="text-sm text-[#78716c] mt-1">Messages submitted from the public contact form, stored in Supabase.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('enquiries')}
+                className="px-4 py-2 rounded-xl border border-[#e7e5e4] text-sm font-semibold hover:bg-[#faf9f6]"
+              >
+                Refresh Inbox
+              </button>
+            </div>
+          </div>
+          {enquiryError && <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{enquiryError}</div>}
+          {loadingEnquiries ? (
+            <div className="bg-white p-8 rounded-2xl border border-[#e7e5e4] text-sm text-[#78716c]">Loading saved enquiries...</div>
+          ) : enquiries.length === 0 ? (
+            <div className="bg-white p-8 rounded-2xl border border-[#e7e5e4] text-sm text-[#78716c]">No enquiries have been recorded yet.</div>
+          ) : (
+            <div className="space-y-4">
+              {enquiries.map(enquiry => (
+                <article key={enquiry.id} className="bg-white p-5 sm:p-6 rounded-2xl border border-[#e7e5e4] shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div>
+                      <h4 className="font-semibold text-[#1c1917]">{enquiry.name}</h4>
+                      <p className="text-xs text-[#78716c] mt-1">
+                        {new Date(enquiry.created_at).toLocaleString()} 
+                        {enquiry.phone ? ' · ' + enquiry.phone : ''}
+                        {enquiry.email ? ' · ' + enquiry.email : ''}
+                      </p>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-[#57534e]">
+                      Status
+                      <select
+                        value={enquiry.status}
+                        onChange={event => updateEnquiryStatus(enquiry.id, event.target.value as Enquiry['status'])}
+                        className="rounded-lg border border-[#e7e5e4] bg-[#faf9f6] px-3 py-2 text-sm"
+                      >
+                        <option value="new">New</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
+                    </label>
+                  </div>
+                  <p className="text-sm text-[#44403c] whitespace-pre-wrap break-words">{enquiry.message}</p>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
