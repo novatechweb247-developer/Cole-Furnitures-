@@ -221,7 +221,6 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     } else {
       setSettings({
         id: 'main',
-        logo_url: '',
         business_name: BUSINESS_INFO.name,
         tagline: BUSINESS_INFO.tagline,
         address: BUSINESS_INFO.address,
