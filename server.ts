@@ -42,7 +42,7 @@ app.use((req, res, next) => {
 
 // Guard all admin mutation endpoints, including uploads. Public read-only storefront requests remain public.
 app.use('/api', (req, res, next) => {
-  const adminMutation = /^(POST|PUT|PATCH|DELETE)$/i.test(req.method) && /^\\/(upload|products|categories|content|testimonials)(?:\\/|$)/.test(req.path);
+  const adminMutation = /^(POST|PUT|PATCH|DELETE)$/i.test(req.method) && /^\/(upload|products|categories|content|testimonials)(?:\/|$)/.test(req.path);
   if (!adminMutation) return next();
   const cookieHeader = req.headers.cookie || '';
   const sessionCookie = cookieHeader.split(';').map((part) => part.trim()).find((part) => part.startsWith(ADMIN_COOKIE + '='));
