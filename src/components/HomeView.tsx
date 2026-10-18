@@ -45,7 +45,7 @@ export function HomeView({ content, products, categories, setCurrentView, onSele
       <section className="relative bg-[#1c1917] text-[#faf9f6] overflow-hidden py-20 lg:py-28">
         <div className="absolute inset-0 opacity-25 mix-blend-overlay">
           <img
-            src="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=1600"
+            src={content.promo?.image || "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=1600"}
             alt="Interior Background"
             className="w-full h-full object-cover"
           />
