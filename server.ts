@@ -54,10 +54,12 @@ app.use('/api', (req, res, next) => {
 
 app.get('/api/admin/session', (req, res) => {
   if (!ADMIN_SECRET_PATH) return res.status(404).json({ error: 'Not found' });
-  const cookieHeader = req.headers.cookie || '';
-  const sessionCookie = cookieHeader.split(';').map((part) => part.trim()).find((part) => part.startsWith(ADMIN_COOKIE + '='));
-  const sessionValue = sessionCookie ? decodeURIComponent(sessionCookie.slice(ADMIN_COOKIE.length + 1)) : undefined;
-  if (!isValidAdminSession(sessionValue)) return res.status(404).json({ error: 'Not found' });
+  const referer = req.get('referer');
+  let refererPath = '';
+  try { if (referer) refererPath = new URL(referer).pathname; } catch { /* reject invalid referer */ }
+  if (refererPath !== ADMIN_SECRET_PATH) return res.status(404).json({ error: 'Not found' });
+  const secure = process.env.NODE_ENV === 'production' || process.env.VERCEL ? '; Secure' : '';
+  res.setHeader('Set-Cookie', ADMIN_COOKIE + '=' + createAdminSession(Date.now()) + '; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800' + secure);
   res.setHeader('Cache-Control', 'no-store');
   res.json({ authorized: true });
 });
