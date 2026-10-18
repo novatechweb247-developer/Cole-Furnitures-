@@ -195,7 +195,11 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(productForm)
       });
-      if (res.ok) {
+      if (!res.ok) {
+        const result = await res.json().catch(() => ({}));
+        throw new Error(result.error || 'Product could not be saved.');
+      }
+      {
         setMessage(editingProduct ? 'Product updated successfully!' : 'Product added successfully!');
         setEditingProduct(null);
         setProductForm({
@@ -219,12 +223,16 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
   const handleDeleteProduct = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     try {
-      await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Product could not be deleted.');
+      }
       onRefreshData();
       setMessage('Product deleted successfully.');
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      console.error(err);
+      setMessage(err instanceof Error ? err.message : 'Product could not be deleted.');
     }
   };
 
@@ -255,7 +263,11 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(categoryForm)
       });
-      if (res.ok) {
+      if (!res.ok) {
+        const result = await res.json().catch(() => ({}));
+        throw new Error(result.error || 'Category could not be saved.');
+      }
+      {
         setMessage(editingCategory ? 'Category updated successfully!' : 'Category added successfully!');
         setEditingCategory(null);
         setCategoryForm({ name: '', description: '', image: '', sortOrder: 1 });
@@ -270,12 +282,16 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
   const handleDeleteCategory = async (id: string) => {
     if (!confirm('Are you sure you want to delete this category?')) return;
     try {
-      await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Category could not be deleted.');
+      }
       onRefreshData();
       setMessage('Category deleted successfully.');
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      console.error(err);
+      setMessage(err instanceof Error ? err.message : 'Category could not be deleted.');
     }
   };
 
@@ -288,7 +304,11 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contentForm)
       });
-      if (res.ok) {
+      if (!res.ok) {
+        const result = await res.json().catch(() => ({}));
+        throw new Error(result.error || 'Website content could not be saved.');
+      }
+      {
         setMessage('Website content updated successfully!');
         onRefreshData();
         setTimeout(() => setMessage(''), 3000);
@@ -307,7 +327,11 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(testimonialForm)
       });
-      if (res.ok) {
+      if (!res.ok) {
+        const result = await res.json().catch(() => ({}));
+        throw new Error(result.error || 'Testimonial could not be saved.');
+      }
+      {
         setMessage('Testimonial added successfully!');
         setTestimonialForm({ author: '', location: '', comment: '', rating: 5 });
         onRefreshData();
@@ -320,12 +344,16 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
 
   const handleDeleteTestimonial = async (id: string) => {
     try {
-      await fetch(`/api/testimonials/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/testimonials/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Testimonial could not be deleted.');
+      }
       onRefreshData();
       setMessage('Testimonial removed.');
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      console.error(err);
+      setMessage(err instanceof Error ? err.message : 'Testimonial could not be deleted.');
     }
   };
 
@@ -601,7 +629,7 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
                   className="flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-[#b45309] text-white font-semibold text-sm shadow-md hover:bg-[#92400e] transition-all"
                 >
                   <Save className="w-4 h-4" />
-                  <span>{editingProduct ? 'Save Changes' : 'Publish Product'}</span>
+                  <span>{editingProduct ? 'Save Product Draft' : 'Save Product Draft'}</span>
                 </button>
               </div>
             </form>
