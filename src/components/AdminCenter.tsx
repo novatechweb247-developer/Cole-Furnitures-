@@ -49,16 +49,66 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
   const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState('');
 
+  const persistOpenForms = async () => {
+    if (editingProduct || productForm.name.trim()) {
+      const url = editingProduct ? '/api/products/' + editingProduct.id : '/api/products';
+      const response = await fetch(url, {
+        method: editingProduct ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productForm)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'The product draft could not be saved.');
+      setEditingProduct(null);
+      setProductForm({
+        name: '',
+        price: 0,
+        description: '',
+        categoryId: storeData.categories[0]?.id || '',
+        images: [''],
+        isFeatured: false,
+        availability: 'In Stock',
+        sortOrder: 1
+      });
+    }
+
+    if (editingCategory || categoryForm.name.trim()) {
+      const url = editingCategory ? '/api/categories/' + editingCategory.id : '/api/categories';
+      const response = await fetch(url, {
+        method: editingCategory ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryForm)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'The category draft could not be saved.');
+      setEditingCategory(null);
+      setCategoryForm({ name: '', description: '', image: '', sortOrder: 1 });
+    }
+
+    if (testimonialForm.author.trim() && testimonialForm.comment.trim()) {
+      const response = await fetch('/api/testimonials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testimonialForm)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'The testimonial draft could not be saved.');
+      setTestimonialForm({ author: '', location: '', comment: '', rating: 5 });
+    }
+
+    const contentResponse = await fetch('/api/content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(contentForm)
+    });
+    const contentResult = await contentResponse.json().catch(() => ({}));
+    if (!contentResponse.ok) throw new Error(contentResult.error || 'Could not save the website content draft.');
+  };
+
   const handleSaveDraft = async () => {
     setSavingDraft(true);
     try {
-      const response = await fetch('/api/content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contentForm)
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || 'Could not save the draft.');
+      await persistOpenForms();
       setMessage('Draft saved securely. Visitors will not see these changes until you publish.');
       await onRefreshData();
     } catch (error) {
@@ -71,14 +121,7 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
   const handlePublishChanges = async () => {
     setPublishing(true);
     try {
-      const saveResponse = await fetch('/api/content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contentForm)
-      });
-      const saveResult = await saveResponse.json().catch(() => ({}));
-      if (!saveResponse.ok) throw new Error(saveResult.error || 'Could not save the latest draft before publishing.');
-
+      await persistOpenForms();
       const response = await fetch('/api/admin/publish', { method: 'POST' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Publish failed. Your saved draft is still available.');
