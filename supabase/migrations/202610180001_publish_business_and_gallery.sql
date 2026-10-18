@@ -88,7 +88,7 @@ begin
       )
       from public.site_settings st
       where st.id='main' and st.is_published = true
-    ), s.data->'business'),
+    ), s.data->'business', '{}'::jsonb),
     true
   ),
   updated_at=now()
