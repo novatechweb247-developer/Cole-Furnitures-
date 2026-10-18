@@ -52,11 +52,10 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
   const handleSaveDraft = async () => {
     setSavingDraft(true);
     try {
-      const draftSnapshot: StoreData = { ...storeData, content: contentForm };
-      const response = await fetch('/api/admin/draft', {
+      const response = await fetch('/api/content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(draftSnapshot)
+        body: JSON.stringify(contentForm)
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Could not save the draft.');
@@ -72,11 +71,10 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
   const handlePublishChanges = async () => {
     setPublishing(true);
     try {
-      const draftSnapshot: StoreData = { ...storeData, content: contentForm };
-      const saveResponse = await fetch('/api/admin/draft', {
+      const saveResponse = await fetch('/api/content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(draftSnapshot)
+        body: JSON.stringify(contentForm)
       });
       const saveResult = await saveResponse.json().catch(() => ({}));
       if (!saveResponse.ok) throw new Error(saveResult.error || 'Could not save the latest draft before publishing.');
