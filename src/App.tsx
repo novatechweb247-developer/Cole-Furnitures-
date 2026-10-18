@@ -83,13 +83,20 @@ export default function App() {
 
   const WHATSAPP_NUMBER = '07065712674';
 
-  // The admin route is configured only through the deployment environment.
-  const adminPath = import.meta.env.VITE_ADMIN_PATH as string | undefined;
-  const isAdminRoute = Boolean(adminPath && adminPath.startsWith('/') && window.location.pathname === adminPath);
+  // The public storefront uses the root path; unknown direct paths are reserved for private admin access.
+  const isAdminRoute = window.location.pathname !== '/' && window.location.pathname !== '/index.html';
 
   const fetchStoreData = async () => {
     try {
-      const res = await fetch(isAdminRoute ? '/api/admin/draft' : '/api/store', { cache: 'no-store' });
+      if (isAdminRoute) {
+        const sessionResponse = await fetch('/api/admin/session', { cache: 'no-store', credentials: 'same-origin' });
+        if (!sessionResponse.ok) {
+          setAdminAccessDenied(true);
+          setStoreData(null);
+          return;
+        }
+      }
+      const res = await fetch(isAdminRoute ? '/api/admin/draft' : '/api/store', { cache: 'no-store', credentials: 'same-origin' });
       if (isAdminRoute && !res.ok) {
         setAdminAccessDenied(true);
         setStoreData(null);
