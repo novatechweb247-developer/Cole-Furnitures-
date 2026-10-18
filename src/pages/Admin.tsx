@@ -368,8 +368,8 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       return;
     }
 
-    if (file.size > 15 * 1024 * 1024) {
-      setError('Image file is larger than 15 MB. Please choose a smaller image.');
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image file is larger than the 10 MB storage limit. Please choose a smaller image.');
       return;
     }
 
