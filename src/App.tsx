@@ -25,6 +25,8 @@ export default function App() {
   const [adminAccessDenied, setAdminAccessDenied] = useState(false);
   const [currentView, setCurrentView] = useState('home');
   const [storeData, setStoreData] = useState<StoreData | null>(() => {
+    // Never hydrate private admin views from public browser cache.
+    if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') return null;
     try {
       const cached = localStorage.getItem('cole_world_store_cache');
       return cached ? JSON.parse(cached) : null;
