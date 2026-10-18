@@ -1,0 +1,126 @@
+import React from 'react';
+import { MapPin, Phone, MessageSquare, Clock, Send } from 'lucide-react';
+
+interface ContactViewProps {
+  whatsappNumber: string;
+}
+
+export function ContactView({ whatsappNumber }: ContactViewProps) {
+  const [visitorName, setVisitorName] = React.useState('');
+  const [visitorMessage, setVisitorMessage] = React.useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = `Hello Cole World Furniture & Interior Designs, my name is ${visitorName}. ${visitorMessage}`;
+    window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+      
+      {/* Header */}
+      <div className="border-b border-[#e7e5e4] pb-8 text-center max-w-2xl mx-auto space-y-2">
+        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#b45309]">Get in Touch</span>
+        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#1c1917]">Contact Cole World Furniture</h1>
+        <p className="text-sm text-[#78716c]">We are ready to assist you with furniture orders, custom woodwork, and interior design consultations.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        
+        {/* Contact Info Cards */}
+        <div className="space-y-6">
+          <div className="bg-white p-8 rounded-3xl border border-[#e7e5e4] shadow-xs space-y-6">
+            <h3 className="font-serif font-bold text-2xl text-[#1c1917]">Showroom & Office</h3>
+            
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#b45309]/10 text-[#b45309] flex items-center justify-center shrink-0">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-base text-[#1c1917]">Address</h4>
+                <p className="text-sm text-[#57534e] mt-1 leading-relaxed">
+                  Cole World Furniture & Interior Designs<br />
+                  No. 10 St Saviour Avenue,<br />
+                  Lendere Kabong,<br />
+                  Jos 930105, Plateau, Nigeria
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#25D366]/10 text-[#25D366] flex items-center justify-center shrink-0">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-base text-[#1c1917]">WhatsApp & Phone</h4>
+                <p className="text-sm text-[#57534e] mt-1">
+                  <a href={`tel:${whatsappNumber}`} className="hover:text-[#b45309] font-medium block">
+                    0706 571 2674
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#1c1917]/10 text-[#1c1917] flex items-center justify-center shrink-0">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-base text-[#1c1917]">Working Hours</h4>
+                <p className="text-sm text-[#57534e] mt-1">
+                  Monday – Saturday: 8:00 AM – 6:00 PM<br />
+                  Sunday: By Appointment
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick WhatsApp Inquiry Form */}
+        <div className="bg-white p-8 sm:p-10 rounded-3xl border border-[#e7e5e4] shadow-xs space-y-6">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#b45309]">Instant Message</span>
+            <h3 className="font-serif font-bold text-2xl text-[#1c1917] mt-1">Send a WhatsApp Inquiry</h3>
+            <p className="text-sm text-[#78716c] mt-1">Fill out the quick form below to start a WhatsApp conversation with our team.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#44403c] mb-1">Your Name</label>
+              <input
+                type="text"
+                required
+                value={visitorName}
+                onChange={(e) => setVisitorName(e.target.value)}
+                placeholder="Enter your name"
+                className="w-full px-4 py-3 rounded-xl bg-[#faf9f6] border border-[#e7e5e4] text-sm focus:outline-none focus:border-[#b45309]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#44403c] mb-1">Your Enquiry / Message</label>
+              <textarea
+                required
+                rows={4}
+                value={visitorMessage}
+                onChange={(e) => setVisitorMessage(e.target.value)}
+                placeholder="I would like to enquire about..."
+                className="w-full px-4 py-3 rounded-xl bg-[#faf9f6] border border-[#e7e5e4] text-sm focus:outline-none focus:border-[#b45309]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-[#25D366] text-white font-semibold text-base shadow-md hover:bg-[#20ba5a] transition-all"
+            >
+              <MessageSquare className="w-5 h-5 fill-current" />
+              <span>Send Message on WhatsApp</span>
+            </button>
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
