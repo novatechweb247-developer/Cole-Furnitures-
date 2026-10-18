@@ -82,6 +82,10 @@ export default function App() {
 
   const WHATSAPP_NUMBER = '07065712674';
 
+  // The admin route is configured only through the deployment environment.
+  const adminPath = import.meta.env.VITE_ADMIN_PATH as string | undefined;
+  const isAdminRoute = Boolean(adminPath && adminPath.startsWith('/') && window.location.pathname === adminPath);
+
   const fetchStoreData = async () => {
     try {
       const res = await fetch('/api/store');
@@ -96,7 +100,20 @@ export default function App() {
     }
 
     // Fallback if API not available (e.g. Vercel static deployment)
-    if (!storeData) {
+    // Keep the admin experience completely separate from the public site's navigation and footer.
+  if (isAdminRoute && storeData) {
+    return (
+      <div className="min-h-screen bg-[#faf9f6] text-[#1c1917]">
+        <AdminCenter
+          storeData={storeData}
+          onRefreshData={fetchStoreData}
+          setCurrentView={() => { window.location.href = '/'; }}
+        />
+      </div>
+    );
+  }
+
+  if (!storeData) {
       setStoreData(defaultStoreData as StoreData);
     }
   };
@@ -288,13 +305,6 @@ export default function App() {
               <ContactView whatsappNumber={WHATSAPP_NUMBER} />
             )}
 
-            {currentView === 'admin' && (
-              <AdminCenter
-                storeData={storeData}
-                onRefreshData={fetchStoreData}
-                setCurrentView={setCurrentView}
-              />
-            )}
           </motion.div>
         </AnimatePresence>
       </main>
