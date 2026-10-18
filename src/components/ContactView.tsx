@@ -1,5 +1,6 @@
 import React from 'react';
 import { MapPin, Phone, MessageSquare, Clock, Send } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface ContactViewProps {
   whatsappNumber: string;
@@ -19,18 +20,19 @@ export function ContactView({ whatsappNumber }: ContactViewProps) {
     const whatsappWindow = window.open('about:blank', '_blank');
     const text = `Hello Cole World Furniture & Interior Designs, my name is ${visitorName}. ${visitorMessage}`;
     try {
-      const response = await fetch('/api/enquiries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: visitorName, message: visitorMessage })
+      if (!supabase) throw new Error('The enquiry service is not configured.');
+      const { error: saveError } = await supabase.from('enquiries').insert({
+        full_name: visitorName.trim(),
+        category: 'General',
+        subject: 'Website enquiry',
+        message: visitorMessage.trim(),
+        preferred_contact: 'WhatsApp',
+        status: 'new',
       });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setSubmitMessage(result.error || 'We could not save the enquiry. You can still contact us directly on WhatsApp.');
-      } else {
-        setSubmitMessage('Your enquiry has been recorded. Opening WhatsApp so you can contact our team too.');
-      }
-    } catch {
+      if (saveError) throw saveError;
+      setSubmitMessage('Your enquiry has been recorded. Opening WhatsApp so you can contact our team too.');
+    } catch (error) {
+      console.error('Failed to record contact enquiry:', error);
       setSubmitMessage('We could not save the enquiry just now. Opening WhatsApp so you can still contact our team.');
     } finally {
       setSubmitting(false);
