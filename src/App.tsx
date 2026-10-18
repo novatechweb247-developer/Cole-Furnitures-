@@ -100,19 +100,6 @@ export default function App() {
     }
 
     // Fallback if API not available (e.g. Vercel static deployment)
-    // Keep the admin experience completely separate from the public site's navigation and footer.
-  if (isAdminRoute && storeData) {
-    return (
-      <div className="min-h-screen bg-[#faf9f6] text-[#1c1917]">
-        <AdminCenter
-          storeData={storeData}
-          onRefreshData={fetchStoreData}
-          setCurrentView={() => { window.location.href = '/'; }}
-        />
-      </div>
-    );
-  }
-
   if (!storeData) {
       setStoreData(defaultStoreData as StoreData);
     }
@@ -219,6 +206,28 @@ export default function App() {
 
   if (loading) {
     return <LoadingScreen onComplete={() => setLoading(false)} />;
+  }
+
+  if (isAdminRoute) {
+    if (!storeData) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#faf9f6] text-[#1c1917]">
+          <div className="text-center space-y-3">
+            <h2 className="text-xl font-serif font-bold">Loading Admin Center...</h2>
+            <p className="text-xs text-[#78716c]">Loading saved website content.</p>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-screen bg-[#faf9f6] text-[#1c1917]">
+        <AdminCenter
+          storeData={storeData}
+          onRefreshData={fetchStoreData}
+          setCurrentView={() => { window.location.href = '/'; }}
+        />
+      </div>
+    );
   }
 
   if (!storeData) {
