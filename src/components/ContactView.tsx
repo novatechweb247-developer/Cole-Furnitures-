@@ -8,11 +8,33 @@ interface ContactViewProps {
 export function ContactView({ whatsappNumber }: ContactViewProps) {
   const [visitorName, setVisitorName] = React.useState('');
   const [visitorMessage, setVisitorMessage] = React.useState('');
+  const [submitting, setSubmitting] = React.useState(false);
+  const [submitMessage, setSubmitMessage] = React.useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitMessage('');
     const text = `Hello Cole World Furniture & Interior Designs, my name is ${visitorName}. ${visitorMessage}`;
-    window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
+    try {
+      const response = await fetch('/api/enquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: visitorName, message: visitorMessage })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setSubmitMessage(result.error || 'We could not save the enquiry. You can still contact us directly on WhatsApp.');
+      } else {
+        setSubmitMessage('Your enquiry has been recorded. Opening WhatsApp so you can contact our team too.');
+      }
+    } catch {
+      setSubmitMessage('We could not save the enquiry just now. Opening WhatsApp so you can still contact our team.');
+    } finally {
+      setSubmitting(false);
+      window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (
@@ -84,6 +106,7 @@ export function ContactView({ whatsappNumber }: ContactViewProps) {
             <p className="text-sm text-[#78716c] mt-1">Fill out the quick form below to start a WhatsApp conversation with our team.</p>
           </div>
 
+          {submitMessage && <p role="status" className="text-sm text-[#57534e] bg-[#faf9f6] border border-[#e7e5e4] rounded-xl p-3">{submitMessage}</p>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#44403c] mb-1">Your Name</label>
@@ -111,10 +134,11 @@ export function ContactView({ whatsappNumber }: ContactViewProps) {
 
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-[#25D366] text-white font-semibold text-base shadow-md hover:bg-[#20ba5a] transition-all"
+              disabled={submitting}
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-[#25D366] text-white font-semibold text-base shadow-md hover:bg-[#20ba5a] transition-all disabled:opacity-60"
             >
               <MessageSquare className="w-5 h-5 fill-current" />
-              <span>Send Message on WhatsApp</span>
+              <span>{submitting ? 'Recording Enquiry...' : 'Send Message on WhatsApp'}</span>
             </button>
           </form>
         </div>
