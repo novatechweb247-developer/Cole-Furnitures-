@@ -85,7 +85,7 @@ export default function App() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
-  const WHATSAPP_NUMBER = '07065712674';
+  const WHATSAPP_NUMBER = storeData?.business?.phoneInternational?.replace(/[^0-9]/g, '') || '07065712674';
 
   // The public storefront uses the root path; unknown direct paths are reserved for private admin access.
   const isAdminRoute = window.location.pathname !== '/' && window.location.pathname !== '/index.html';
@@ -349,7 +349,7 @@ export default function App() {
             )}
 
             {currentView === 'contact' && (
-              <ContactView whatsappNumber={WHATSAPP_NUMBER} />
+              <ContactView whatsappNumber={WHATSAPP_NUMBER} business={storeData.business} />
             )}
 
           </motion.div>
@@ -359,6 +359,7 @@ export default function App() {
       <Footer
         setCurrentView={setCurrentView}
         whatsappNumber={WHATSAPP_NUMBER}
+        business={storeData.business}
       />
 
       {/* Sticky Mobile Footer Navigation */}
