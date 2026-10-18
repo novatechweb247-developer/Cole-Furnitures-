@@ -23,6 +23,7 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loadingEnquiries, setLoadingEnquiries] = useState(false);
   const [enquiryError, setEnquiryError] = useState('');
+  const [enquiryRefresh, setEnquiryRefresh] = useState(0);
 
   useEffect(() => {
     if (activeTab !== 'enquiries') return;
@@ -40,7 +41,7 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
       })
       .finally(() => { if (!cancelled) setLoadingEnquiries(false); });
     return () => { cancelled = true; };
-  }, [activeTab]);
+  }, [activeTab, enquiryRefresh]);
 
   const updateEnquiryStatus = async (id: string, status: Enquiry['status']) => {
     try {
@@ -917,7 +918,7 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
               </div>
               <button
                 type="button"
-                onClick={() => setActiveTab('enquiries')}
+                onClick={() => setEnquiryRefresh(current => current + 1)}
                 className="px-4 py-2 rounded-xl border border-[#e7e5e4] text-sm font-semibold hover:bg-[#faf9f6]"
               >
                 Refresh Inbox
