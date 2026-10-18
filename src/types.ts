@@ -54,7 +54,22 @@ export interface StoreContent {
   testimonials: Testimonial[];
 }
 
+export interface StoreBusiness {
+  name?: string;
+  tagline?: string;
+  address?: string;
+  phone?: string;
+  phoneInternational?: string;
+  whatsappUrl?: string;
+  mapUrl?: string;
+  description?: string;
+  logoUrl?: string;
+  editorialImageUrl?: string;
+}
+
 export interface StoreData {
+  business?: StoreBusiness;
+  gallery?: Array<{ id: string; title: string; category: string; image: string; description: string; sortOrder: number }>;
   categories: Category[];
   products: Product[];
   content: StoreContent;
