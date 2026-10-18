@@ -8,16 +8,16 @@ import { createServer as createViteServer } from "vite";
 const app = express();
 const PORT = 3000;
 
-// Admin access uses a deployment-only secret path plus a short-lived signed cookie.
-// Configure ADMIN_SECRET_PATH and ADMIN_SESSION_SECRET only in the hosting environment.
+// The private URL is the entry point. A short-lived HttpOnly cookie lets its page call admin APIs.
+// ADMIN_SESSION_SECRET remains supported when present, but ADMIN_SECRET_PATH alone is sufficient to sign the cookie.
 const ADMIN_SECRET_PATH = process.env.ADMIN_SECRET_PATH;
-const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET;
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || ADMIN_SECRET_PATH || '';
 const ADMIN_COOKIE = 'cole_admin_session';
 const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
 function createAdminSession(timestamp: number) {
   const payload = String(timestamp);
-  const signature = crypto.createHmac('sha256', ADMIN_SESSION_SECRET || '').update(payload).digest('hex');
+  const signature = crypto.createHmac('sha256', ADMIN_SESSION_SECRET).update(payload).digest('hex');
   return payload + '.' + signature;
 }
 
@@ -33,9 +33,10 @@ function isValidAdminSession(value: string | undefined) {
 }
 
 app.use((req, res, next) => {
-  if (ADMIN_SECRET_PATH && ADMIN_SESSION_SECRET && req.method === 'GET' && req.path === ADMIN_SECRET_PATH) {
-    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  if (ADMIN_SECRET_PATH && req.method === 'GET' && req.path === ADMIN_SECRET_PATH) {
+    const secure = process.env.NODE_ENV === 'production' || process.env.VERCEL ? '; Secure' : '';
     res.setHeader('Set-Cookie', ADMIN_COOKIE + '=' + createAdminSession(Date.now()) + '; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800' + secure);
+    res.setHeader('Cache-Control', 'no-store');
   }
   next();
 });
@@ -52,13 +53,11 @@ app.use('/api', (req, res, next) => {
 });
 
 app.get('/api/admin/session', (req, res) => {
-  if (!ADMIN_SECRET_PATH || !ADMIN_SESSION_SECRET) return res.status(404).json({ error: 'Not found' });
-  const referer = req.get('referer');
-  let refererPath = '';
-  try { if (referer) refererPath = new URL(referer).pathname; } catch { /* reject invalid referer */ }
-  if (refererPath !== ADMIN_SECRET_PATH) return res.status(404).json({ error: 'Not found' });
-  const secure = process.env.NODE_ENV === 'production' || process.env.VERCEL ? '; Secure' : '';
-  res.setHeader('Set-Cookie', ADMIN_COOKIE + '=' + createAdminSession(Date.now()) + '; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800' + secure);
+  if (!ADMIN_SECRET_PATH) return res.status(404).json({ error: 'Not found' });
+  const cookieHeader = req.headers.cookie || '';
+  const sessionCookie = cookieHeader.split(';').map((part) => part.trim()).find((part) => part.startsWith(ADMIN_COOKIE + '='));
+  const sessionValue = sessionCookie ? decodeURIComponent(sessionCookie.slice(ADMIN_COOKIE.length + 1)) : undefined;
+  if (!isValidAdminSession(sessionValue)) return res.status(404).json({ error: 'Not found' });
   res.setHeader('Cache-Control', 'no-store');
   res.json({ authorized: true });
 });
@@ -204,7 +203,7 @@ function saveDb(data: any) {
 
 // Image uploads use memory temporarily and then go to durable object storage.
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_IMAGE_SIZE, files: 5 },
@@ -342,7 +341,7 @@ app.post("/api/upload", upload.array("images", 5), asyncRoute(async (req, res) =
   if (!files || files.length === 0) return res.status(400).json({ error: "No files uploaded." });
   const urls: string[] = [];
   for (const file of files) {
-    const extension = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" } as Record<string, string>)[file.mimetype];
+    const extension = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/avif": "avif" } as Record<string, string>)[file.mimetype];
     if (hasSupabaseServerConfig) {
       const objectPath = "site/" + new Date().toISOString().slice(0, 10) + "/" + crypto.randomUUID() + "." + extension;
       const response = await fetch(SUPABASE_URL + "/storage/v1/object/" + encodeURIComponent(SUPABASE_STORAGE_BUCKET) + "/" + objectPath.split("/").map(encodeURIComponent).join("/"), {
@@ -369,6 +368,42 @@ app.post("/api/upload", upload.array("images", 5), asyncRoute(async (req, res) =
     }
   }
   res.json({ urls });
+}));
+
+// Public contact submissions are persisted in Supabase; admin reads and status changes use the protected admin API.
+app.post("/api/enquiries", asyncRoute(async (req, res) => {
+  const name = String(req.body?.name || "").trim().slice(0, 120);
+  const message = String(req.body?.message || "").trim().slice(0, 5000);
+  const phone = String(req.body?.phone || "").trim().slice(0, 80);
+  const email = String(req.body?.email || "").trim().slice(0, 254);
+  if (!name || !message) return res.status(400).json({ error: "Your name and enquiry message are required." });
+  if (!hasSupabaseServerConfig) return res.status(503).json({ error: "Enquiry storage is not configured yet. Please contact us directly on WhatsApp." });
+  const rows = await supabaseRest("cole_enquiries", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ name, message, phone: phone || null, email: email || null })
+  });
+  res.status(201).json({ success: true, enquiry: Array.isArray(rows) ? rows[0] : rows });
+}));
+
+app.get("/api/admin/enquiries", asyncRoute(async (_req, res) => {
+  if (!hasSupabaseServerConfig) return res.status(503).json({ error: "Supabase server configuration is required for the enquiry inbox." });
+  res.setHeader("Cache-Control", "no-store");
+  const rows = await supabaseRest("cole_enquiries?select=id,name,phone,email,message,status,created_at&order=created_at.desc");
+  res.json(Array.isArray(rows) ? rows : []);
+}));
+
+app.patch("/api/admin/enquiries/:id", asyncRoute(async (req, res) => {
+  const status = String(req.body?.status || "");
+  if (!["new", "contacted", "resolved"].includes(status)) return res.status(400).json({ error: "Choose a valid enquiry status." });
+  if (!hasSupabaseServerConfig) return res.status(503).json({ error: "Supabase server configuration is required for the enquiry inbox." });
+  const rows = await supabaseRest("cole_enquiries?id=eq." + encodeURIComponent(req.params.id) + "&select=id,status", {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ status })
+  });
+  if (!Array.isArray(rows) || rows.length === 0) return res.status(404).json({ error: "Enquiry not found." });
+  res.json({ success: true, enquiry: rows[0] });
 }));
 
 // Product, category, content and testimonial changes always update the persistent draft.
