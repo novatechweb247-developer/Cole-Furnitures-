@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, Phone, MessageSquare, ShieldCheck, ShoppingBag, Grid, Info, Palette, Home as HomeIcon, Heart, User as UserIcon } from 'lucide-react';
+import { Menu, X, Phone, MessageSquare, ShoppingBag, Grid, Info, Palette, Home as HomeIcon, Heart, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User } from '../types';
 
@@ -141,17 +141,7 @@ export function Navbar({
               <span>WhatsApp</span>
             </button>
 
-            <button
-              onClick={() => { setCurrentView('admin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`p-2.5 rounded-full border transition-all ${
-                currentView === 'admin'
-                  ? 'bg-[#b45309] text-white border-[#b45309]'
-                  : 'bg-white text-[#44403c] border-[#d6d3d1] hover:bg-[#f5f5f4]'
-              }`}
-              title="Admin Center"
-            >
-              <ShieldCheck className="w-4 h-4" />
-            </button>
+
           </div>
 
           {/* Mobile Right Action Buttons */}
@@ -231,17 +221,6 @@ export function Navbar({
               })}
 
               <div className="pt-4 border-t border-[#e7e5e4] flex flex-col gap-2">
-                <button
-                  onClick={() => {
-                    setCurrentView('admin');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-[#d6d3d1] text-[#1c1917] font-medium text-sm"
-                >
-                  <ShieldCheck className="w-5 h-5 text-[#b45309]" />
-                  <span>Admin Center</span>
-                </button>
-
                 <button
                   onClick={() => {
                     handleWhatsApp();
