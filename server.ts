@@ -63,8 +63,8 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Ensure data and uploads directories exist
-const DATA_DIR = path.join(process.cwd(), "data");
-const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
+const DATA_DIR = process.env.VERCEL ? path.join("/tmp", "cole-furniture-data") : path.join(process.cwd(), "data");
+const UPLOADS_DIR = process.env.VERCEL ? path.join("/tmp", "cole-furniture-uploads") : path.join(process.cwd(), "public", "uploads");
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -192,7 +192,7 @@ function saveDb(data: any) {
 
 // Image uploads use memory temporarily and then go to durable object storage.
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"]);
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_IMAGE_SIZE, files: 5 },
@@ -330,7 +330,7 @@ app.post("/api/upload", upload.array("images", 5), asyncRoute(async (req, res) =
   if (!files || files.length === 0) return res.status(400).json({ error: "No files uploaded." });
   const urls: string[] = [];
   for (const file of files) {
-    const extension = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif", "image/gif": "gif" } as Record<string, string>)[file.mimetype];
+    const extension = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" } as Record<string, string>)[file.mimetype];
     if (hasSupabaseServerConfig) {
       const objectPath = "site/" + new Date().toISOString().slice(0, 10) + "/" + crypto.randomUUID() + "." + extension;
       const response = await fetch(SUPABASE_URL + "/storage/v1/object/" + encodeURIComponent(SUPABASE_STORAGE_BUCKET) + "/" + objectPath.split("/").map(encodeURIComponent).join("/"), {
@@ -674,6 +674,25 @@ app.post("/api/paystack/verify", async (req, res) => {
   }
 });
 
+// Keep API errors machine-readable; never return internal stack traces to the browser.
+app.use('/api', (error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'Each image must be 8 MB or smaller.' });
+  }
+  const status = Number(error?.status) >= 400 && Number(error.status) < 600 ? Number(error.status) : 500;
+  const message = status === 500 ? 'The request could not be completed. Check the server configuration and try again.' : String(error?.message || 'Request failed.');
+  console.error('API request failed:', error?.message || error);
+  res.status(status).json({ error: message });
+});
+
+export { app };
+
+// Vercel serves the built frontend as static assets and imports this Express app for /api/*.
+// Do not start a listening server or initialize Vite inside a serverless function.
+if (!process.env.VERCEL) {
+  startServer();
+}
+
 async function startServer() {
   app.use('/uploads', express.static(UPLOADS_DIR));
 
@@ -686,14 +705,12 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
+    app.get('*all', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Cole World Furniture server running on http://localhost:${PORT}`);
+    console.log("Cole World Furniture server running on http://localhost:" + PORT);
   });
 }
-
-startServer();
