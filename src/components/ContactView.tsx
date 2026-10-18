@@ -1,12 +1,17 @@
 import React from 'react';
 import { MapPin, Phone, MessageSquare, Clock, Send } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { StoreBusiness } from '../types';
 
 interface ContactViewProps {
   whatsappNumber: string;
+  business?: StoreBusiness;
 }
 
-export function ContactView({ whatsappNumber }: ContactViewProps) {
+export function ContactView({ whatsappNumber, business }: ContactViewProps) {
+  const businessName = business?.name || 'Cole World Furniture & Interior Designs';
+  const businessAddress = business?.address || 'No. 10 St Saviour Avenue, Lendere Kabong, Jos 930105, Plateau, Nigeria';
+  const displayPhone = business?.phone || '0706 571 2674';
   const [visitorName, setVisitorName] = React.useState('');
   const [visitorMessage, setVisitorMessage] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
@@ -18,7 +23,7 @@ export function ContactView({ whatsappNumber }: ContactViewProps) {
     setSubmitting(true);
     setSubmitMessage('');
     const whatsappWindow = window.open('about:blank', '_blank');
-    const text = `Hello Cole World Furniture & Interior Designs, my name is ${visitorName}. ${visitorMessage}`;
+    const text = `Hello ${businessName}, my name is ${visitorName}. ${visitorMessage}`;
     try {
       if (!supabase) throw new Error('The enquiry service is not configured.');
       const { error: saveError } = await supabase.from('enquiries').insert({
@@ -52,7 +57,7 @@ export function ContactView({ whatsappNumber }: ContactViewProps) {
       {/* Header */}
       <div className="border-b border-[#e7e5e4] pb-8 text-center max-w-2xl mx-auto space-y-2">
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#b45309]">Get in Touch</span>
-        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#1c1917]">Contact Cole World Furniture</h1>
+        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#1c1917]">Contact {businessName}</h1>
         <p className="text-sm text-[#78716c]">We are ready to assist you with furniture orders, custom woodwork, and interior design consultations.</p>
       </div>
 
@@ -70,10 +75,8 @@ export function ContactView({ whatsappNumber }: ContactViewProps) {
               <div>
                 <h4 className="font-semibold text-base text-[#1c1917]">Address</h4>
                 <p className="text-sm text-[#57534e] mt-1 leading-relaxed">
-                  Cole World Furniture & Interior Designs<br />
-                  No. 10 St Saviour Avenue,<br />
-                  Lendere Kabong,<br />
-                  Jos 930105, Plateau, Nigeria
+                  {businessName}<br />
+                  {businessAddress.split(', ').map((part, index) => <React.Fragment key={`${part}-${index}`}>{index > 0 && <br />}{part}</React.Fragment>)}
                 </p>
               </div>
             </div>
@@ -86,7 +89,7 @@ export function ContactView({ whatsappNumber }: ContactViewProps) {
                 <h4 className="font-semibold text-base text-[#1c1917]">WhatsApp & Phone</h4>
                 <p className="text-sm text-[#57534e] mt-1">
                   <a href={`tel:${whatsappNumber}`} className="hover:text-[#b45309] font-medium block">
-                    0706 571 2674
+                    {displayPhone}
                   </a>
                 </p>
               </div>
