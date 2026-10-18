@@ -110,11 +110,16 @@ export default function App() {
         return;
       }
     } catch (err) {
-      console.warn('API store fetch failed, using fallback/cache', err);
+      console.warn('API store fetch failed', err);
+      if (isAdminRoute) {
+        setAdminAccessDenied(true);
+        setStoreData(null);
+        return;
+      }
     }
 
-    // Fallback if API not available (e.g. Vercel static deployment)
-  if (!storeData) {
+    // Public-only fallback for local previews. Admin access never uses cached or default data.
+    if (!isAdminRoute && !storeData) {
       setStoreData(defaultStoreData as StoreData);
     }
   };
