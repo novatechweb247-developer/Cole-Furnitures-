@@ -22,6 +22,7 @@ import { defaultStoreData } from './data/defaultStore';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
+  const [adminAccessDenied, setAdminAccessDenied] = useState(false);
   const [currentView, setCurrentView] = useState('home');
   const [storeData, setStoreData] = useState<StoreData | null>(() => {
     try {
@@ -88,11 +89,17 @@ export default function App() {
 
   const fetchStoreData = async () => {
     try {
-      const res = await fetch('/api/store');
+      const res = await fetch(isAdminRoute ? '/api/admin/draft' : '/api/store', { cache: 'no-store' });
+      if (isAdminRoute && !res.ok) {
+        setAdminAccessDenied(true);
+        setStoreData(null);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
+        setAdminAccessDenied(false);
         setStoreData(data);
-        localStorage.setItem('cole_world_store_cache', JSON.stringify(data));
+        if (!isAdminRoute) localStorage.setItem('cole_world_store_cache', JSON.stringify(data));
         return;
       }
     } catch (err) {
@@ -206,6 +213,18 @@ export default function App() {
 
   if (loading) {
     return <LoadingScreen onComplete={() => setLoading(false)} />;
+  }
+
+  if (isAdminRoute && adminAccessDenied) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#faf9f6] text-[#1c1917] px-6">
+        <div className="max-w-md text-center space-y-3">
+          <h1 className="text-2xl font-serif font-bold">Admin Center unavailable</h1>
+          <p className="text-sm text-[#78716c]">The private route is not configured or this session is not authorized. Open the configured private URL and confirm the server environment settings.</p>
+          <button onClick={() => { window.location.href = '/'; }} className="px-5 py-2.5 rounded-full bg-[#1c1917] text-white text-sm font-semibold">Return to website</button>
+        </div>
+      </div>
+    );
   }
 
   if (isAdminRoute) {
