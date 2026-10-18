@@ -1,14 +1,20 @@
 import React from 'react';
 import { Phone, MessageSquare, MapPin, Armchair, ChevronRight } from 'lucide-react';
+import { StoreBusiness } from '../types';
 
 interface FooterProps {
   setCurrentView: (view: string) => void;
   whatsappNumber: string;
+  business?: StoreBusiness;
 }
 
-export function Footer({ setCurrentView, whatsappNumber }: FooterProps) {
+export function Footer({ setCurrentView, whatsappNumber, business }: FooterProps) {
+  const businessName = business?.name || 'Cole World Furniture & Interior Designs';
+  const businessAddress = business?.address || 'No. 10 St Saviour Avenue, Lendere Kabong, Jos 930105, Plateau, Nigeria';
+  const displayPhone = business?.phone || '0706 571 2674';
+  const tagline = business?.tagline || 'Furniture & Interiors';
   const handleWhatsApp = () => {
-    window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hello Cole World Furniture & Interior Designs, I would like to enquire about your furniture items and interior design services.")}`, '_blank');
+    window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hello ${businessName}, I would like to enquire about your furniture items and interior design services.`)}`, '_blank');
   };
 
   return (
@@ -27,12 +33,12 @@ export function Footer({ setCurrentView, whatsappNumber }: FooterProps) {
                   Cole World
                 </span>
                 <span className="block text-[10px] font-sans uppercase tracking-[0.2em] text-[#a8a29e]">
-                  Furniture & Interiors
+                  {tagline}
                 </span>
               </div>
             </div>
             <p className="text-sm text-[#a8a29e] leading-relaxed">
-              Crafting premium luxury furniture and offering bespoke interior design solutions for homes and executive spaces in Jos and across Nigeria.
+              {business?.description || 'Crafting premium luxury furniture and offering bespoke interior design solutions for homes and executive spaces in Jos and across Nigeria.'}
             </p>
             <div className="pt-2">
               <button
@@ -79,10 +85,8 @@ export function Footer({ setCurrentView, whatsappNumber }: FooterProps) {
             <div className="flex items-start gap-3 text-sm text-[#a8a29e]">
               <MapPin className="w-5 h-5 text-[#b45309] shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-white">Cole World Furniture & Interior Designs</p>
-                <p className="mt-1">No. 10 St Saviour Avenue,</p>
-                <p>Lendere Kabong,</p>
-                <p>Jos 930105, Plateau, Nigeria</p>
+                <p className="font-medium text-white">{businessName}</p>
+                {businessAddress.split(', ').map((part, index) => <p key={`${part}-${index}`} className={index === 0 ? 'mt-1' : ''}>{part}</p>)}
               </div>
             </div>
           </div>
@@ -98,7 +102,7 @@ export function Footer({ setCurrentView, whatsappNumber }: FooterProps) {
                 className="flex items-center gap-3 hover:text-white transition-colors"
               >
                 <Phone className="w-4 h-4 text-[#b45309]" />
-                <span>0706 571 2674</span>
+                <span>{displayPhone}</span>
               </a>
               <a
                 href={`https://wa.me/${whatsappNumber}`}
@@ -107,7 +111,7 @@ export function Footer({ setCurrentView, whatsappNumber }: FooterProps) {
                 className="flex items-center gap-3 hover:text-white transition-colors"
               >
                 <MessageSquare className="w-4 h-4 text-[#25D366]" />
-                <span>WhatsApp: 0706 571 2674</span>
+                <span>WhatsApp: {displayPhone}</span>
               </a>
               <div className="pt-2 text-xs text-[#78716c]">
                 Working Hours: Mon - Sat: 8:00 AM - 6:00 PM
@@ -119,7 +123,7 @@ export function Footer({ setCurrentView, whatsappNumber }: FooterProps) {
 
         {/* Bottom Copyright */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-[#78716c] gap-4">
-          <p>© {new Date().getFullYear()} Cole World Furniture & Interior Designs. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {businessName}. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <span>Jos, Plateau State, Nigeria</span>
           </div>
