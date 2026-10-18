@@ -642,6 +642,12 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       ...productRows.map((item) => saveProduct(item, publish, false)),
       ...galleryRows.map((item) => saveGalleryItem(item, publish, false)),
     ]);
+    if (publish) {
+      const { error: publishError } = await supabase.rpc('publish_cole_admin_content');
+      if (publishError) {
+        throw new Error(`Saved content, but publishing to the live storefront failed: ${publishError.message}`);
+      }
+    }
     await loadData();
   };
   const deleteProduct = async (item: ProductRow) => {
