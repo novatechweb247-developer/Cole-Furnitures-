@@ -1,18 +1,82 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import multer from "multer";
 import { createServer as createViteServer } from "vite";
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+// Admin access uses a deployment-only secret path plus a short-lived signed cookie.
+// Configure ADMIN_SECRET_PATH and ADMIN_SESSION_SECRET only in the hosting environment.
+const ADMIN_SECRET_PATH = process.env.ADMIN_SECRET_PATH;
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET;
+const ADMIN_COOKIE = 'cole_admin_session';
+const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+
+function createAdminSession(timestamp: number) {
+  const payload = String(timestamp);
+  const signature = crypto.createHmac('sha256', ADMIN_SESSION_SECRET || '').update(payload).digest('hex');
+  return payload + '.' + signature;
+}
+
+function isValidAdminSession(value: string | undefined) {
+  if (!value || !ADMIN_SESSION_SECRET) return false;
+  const [timestampText, signature] = value.split('.');
+  const timestamp = Number(timestampText);
+  if (!Number.isFinite(timestamp) || !signature || Date.now() - timestamp > ADMIN_SESSION_TTL_MS || timestamp > Date.now() + 60_000) return false;
+  const expected = crypto.createHmac('sha256', ADMIN_SESSION_SECRET).update(timestampText).digest('hex');
+  const actualBuffer = Buffer.from(signature, 'hex');
+  const expectedBuffer = Buffer.from(expected, 'hex');
+  return actualBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+app.use((req, res, next) => {
+  if (ADMIN_SECRET_PATH && ADMIN_SESSION_SECRET && req.method === 'GET' && req.path === ADMIN_SECRET_PATH) {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    res.setHeader('Set-Cookie', ADMIN_COOKIE + '=' + createAdminSession(Date.now()) + '; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800' + secure);
+  }
+  next();
+});
+
+// Guard all admin mutation endpoints, including uploads. Public read-only storefront requests remain public.
+app.use('/api', (req, res, next) => {
+  const adminMutation = /^(POST|PUT|PATCH|DELETE)$/i.test(req.method) && /^\/(admin|upload|products|categories|content|testimonials)(?:\/|$)/.test(req.path);
+  if (!adminMutation) return next();
+  const cookieHeader = req.headers.cookie || '';
+  const sessionCookie = cookieHeader.split(';').map((part) => part.trim()).find((part) => part.startsWith(ADMIN_COOKIE + '='));
+  const sessionValue = sessionCookie ? decodeURIComponent(sessionCookie.slice(ADMIN_COOKIE.length + 1)) : undefined;
+  if (!isValidAdminSession(sessionValue)) return res.status(404).json({ error: 'Not found' });
+  next();
+});
+
+app.get('/api/admin/session', (req, res) => {
+  if (!ADMIN_SECRET_PATH || !ADMIN_SESSION_SECRET) return res.status(404).json({ error: 'Not found' });
+  const referer = req.get('referer');
+  let refererPath = '';
+  try { if (referer) refererPath = new URL(referer).pathname; } catch { /* reject invalid referer */ }
+  if (refererPath !== ADMIN_SECRET_PATH) return res.status(404).json({ error: 'Not found' });
+  const secure = process.env.NODE_ENV === 'production' || process.env.VERCEL ? '; Secure' : '';
+  res.setHeader('Set-Cookie', ADMIN_COOKIE + '=' + createAdminSession(Date.now()) + '; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800' + secure);
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ authorized: true });
+});
+
+app.use('/api/admin', (req, res, next) => {
+  const cookieHeader = req.headers.cookie || '';
+  const sessionCookie = cookieHeader.split(';').map((part) => part.trim()).find((part) => part.startsWith(ADMIN_COOKIE + '='));
+  const sessionValue = sessionCookie ? decodeURIComponent(sessionCookie.slice(ADMIN_COOKIE.length + 1)) : undefined;
+  if (!isValidAdminSession(sessionValue)) return res.status(404).json({ error: 'Not found' });
+  next();
+});
+
+app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Ensure data and uploads directories exist
-const DATA_DIR = path.join(process.cwd(), "data");
-const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
+const DATA_DIR = process.env.VERCEL ? path.join("/tmp", "cole-furniture-data") : path.join(process.cwd(), "data");
+const UPLOADS_DIR = process.env.VERCEL ? path.join("/tmp", "cole-furniture-uploads") : path.join(process.cwd(), "public", "uploads");
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -138,165 +202,295 @@ function saveDb(data: any) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
 }
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOADS_DIR);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, 'furniture-' + uniqueSuffix + ext);
+// Image uploads use memory temporarily and then go to durable object storage.
+const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_IMAGE_SIZE, files: 5 },
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_IMAGE_TYPES.has(file.mimetype)) return cb(new Error("Use a JPG, PNG, WEBP, AVIF, or GIF image."));
+    cb(null, true);
   }
 });
-const upload = multer({ storage });
 
-// API Routes
-app.get("/api/store", (req, res) => {
-  const db = getDb();
-  res.json(db);
-});
+const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const SUPABASE_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "cole-furniture-images";
+const hasSupabaseServerConfig = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 
-// Upload endpoint
-app.post("/api/upload", upload.array("images", 5), (req, res) => {
-  try {
-    const files = req.files as Express.Multer.File[];
-    if (!files || files.length === 0) {
-      return res.status(400).json({ error: "No files uploaded" });
+function publicStoreShape(data: any) {
+  return {
+    categories: Array.isArray(data?.categories) ? data.categories : initialData.categories,
+    products: Array.isArray(data?.products) ? data.products : initialData.products,
+    content: data?.content && typeof data.content === "object" ? data.content : initialData.content
+  };
+}
+
+async function supabaseRest(pathname: string, init: RequestInit = {}) {
+  if (!hasSupabaseServerConfig) throw new Error("Supabase server configuration is missing.");
+  const response = await fetch(SUPABASE_URL + "/rest/v1/" + pathname, {
+    ...init,
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: "Bearer " + SUPABASE_SERVICE_ROLE_KEY,
+      "Content-Type": "application/json",
+      ...(init.headers || {})
     }
-    const fileUrls = files.map(file => `/uploads/${file.filename}`);
-    res.json({ urls: fileUrls });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  });
+  const bodyText = await response.text();
+  if (!response.ok) throw new Error("Supabase request failed (" + response.status + "): " + bodyText.slice(0, 300));
+  return bodyText ? JSON.parse(bodyText) : null;
+}
 
-// Products CRUD
-app.post("/api/products", (req, res) => {
+async function readPublishedStore(): Promise<any> {
+  if (hasSupabaseServerConfig) {
+    const rows = await supabaseRest("cole_store?id=eq.main&select=data");
+    if (Array.isArray(rows) && rows[0]?.data) return publicStoreShape(rows[0].data);
+    const initial = publicStoreShape(getDb());
+    await supabaseRest("cole_store?on_conflict=id", {
+      method: "POST",
+      headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+      body: JSON.stringify({ id: "main", data: initial, updated_at: new Date().toISOString() })
+    });
+    return initial;
+  }
+  if (process.env.NODE_ENV === "production") throw new Error("Supabase server configuration is required in production.");
+  return publicStoreShape(getDb());
+}
+
+async function readDraftStore(): Promise<any> {
+  if (hasSupabaseServerConfig) {
+    const rows = await supabaseRest("cole_store_drafts?id=eq.main&select=data");
+    if (Array.isArray(rows) && rows[0]?.data) return publicStoreShape(rows[0].data);
+    const published = await readPublishedStore();
+    return published;
+  }
+  if (process.env.NODE_ENV === "production") throw new Error("Supabase server configuration is required in production.");
+  const draftFile = path.join(DATA_DIR, "store-draft.json");
+  if (fs.existsSync(draftFile)) {
+    try { return publicStoreShape(JSON.parse(fs.readFileSync(draftFile, "utf-8"))); } catch { /* use published fallback */ }
+  }
+  return publicStoreShape(getDb());
+}
+
+async function writeDraftStore(data: any): Promise<any> {
+  const safeData = publicStoreShape(data);
+  if (hasSupabaseServerConfig) {
+    await supabaseRest("cole_store_drafts?on_conflict=id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ id: "main", data: safeData, updated_at: new Date().toISOString() })
+    });
+    return safeData;
+  }
+  if (process.env.NODE_ENV === "production") throw new Error("Supabase server configuration is required in production.");
+  fs.writeFileSync(path.join(DATA_DIR, "store-draft.json"), JSON.stringify(safeData, null, 2), "utf-8");
+  return safeData;
+}
+
+async function publishDraftStore(): Promise<any> {
+  const draft = await readDraftStore();
+  if (hasSupabaseServerConfig) {
+    await supabaseRest("cole_store?on_conflict=id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ id: "main", data: draft, updated_at: new Date().toISOString() })
+    });
+    return draft;
+  }
+  if (process.env.NODE_ENV === "production") throw new Error("Supabase server configuration is required in production.");
   const db = getDb();
+  db.categories = draft.categories;
+  db.products = draft.products;
+  db.content = draft.content;
+  saveDb(db);
+  return publicStoreShape(db);
+}
+
+function asyncRoute(handler: (req: express.Request, res: express.Response) => Promise<any>) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    handler(req, res).catch(next);
+  };
+}
+
+// Public API exposes only published store content, never drafts or customer records.
+app.get("/api/store", asyncRoute(async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json(await readPublishedStore());
+}));
+
+app.get("/api/admin/draft", asyncRoute(async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json(await readDraftStore());
+}));
+
+app.post("/api/admin/draft", asyncRoute(async (req, res) => {
+  if (!req.body || typeof req.body !== "object") return res.status(400).json({ error: "Draft content is required." });
+  const draft = await writeDraftStore(req.body);
+  res.json({ success: true, data: draft });
+}));
+
+app.post("/api/admin/publish", asyncRoute(async (_req, res) => {
+  const published = await publishDraftStore();
+  res.json({ success: true, data: published });
+}));
+
+// Upload endpoint: validate file type/size and store permanently in Supabase Storage.
+app.post("/api/upload", upload.array("images", 5), asyncRoute(async (req, res) => {
+  const files = req.files as Express.Multer.File[];
+  if (!files || files.length === 0) return res.status(400).json({ error: "No files uploaded." });
+  const urls: string[] = [];
+  for (const file of files) {
+    const extension = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" } as Record<string, string>)[file.mimetype];
+    if (hasSupabaseServerConfig) {
+      const objectPath = "site/" + new Date().toISOString().slice(0, 10) + "/" + crypto.randomUUID() + "." + extension;
+      const response = await fetch(SUPABASE_URL + "/storage/v1/object/" + encodeURIComponent(SUPABASE_STORAGE_BUCKET) + "/" + objectPath.split("/").map(encodeURIComponent).join("/"), {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: "Bearer " + SUPABASE_SERVICE_ROLE_KEY,
+          "Content-Type": file.mimetype,
+          "x-upsert": "false"
+        },
+        body: file.buffer
+      });
+      if (!response.ok) {
+        const detail = (await response.text()).slice(0, 250);
+        throw new Error("Image storage upload failed (" + response.status + "): " + detail);
+      }
+      urls.push(SUPABASE_URL + "/storage/v1/object/public/" + encodeURIComponent(SUPABASE_STORAGE_BUCKET) + "/" + objectPath.split("/").map(encodeURIComponent).join("/"));
+    } else if (process.env.NODE_ENV !== "production") {
+      const filename = "furniture-" + crypto.randomUUID() + "." + extension;
+      fs.writeFileSync(path.join(UPLOADS_DIR, filename), file.buffer);
+      urls.push("/uploads/" + filename);
+    } else {
+      throw new Error("Supabase server configuration is required for permanent image uploads.");
+    }
+  }
+  res.json({ urls });
+}));
+
+// Product, category, content and testimonial changes always update the persistent draft.
+// They remain invisible to public visitors until Publish Changes is used.
+app.post("/api/products", asyncRoute(async (req, res) => {
+  const db = await readDraftStore();
   const newProduct = {
-    id: "prod-" + Date.now(),
-    name: req.body.name,
+    id: "prod-" + crypto.randomUUID(),
+    name: String(req.body.name || "").trim(),
     price: Number(req.body.price),
-    description: req.body.description,
-    categoryId: req.body.categoryId,
-    images: req.body.images || [],
+    description: String(req.body.description || ""),
+    categoryId: String(req.body.categoryId || ""),
+    images: Array.isArray(req.body.images) ? req.body.images : [],
     isFeatured: Boolean(req.body.isFeatured),
     availability: req.body.availability || "In Stock",
     sortOrder: Number(req.body.sortOrder) || db.products.length + 1,
     createdAt: new Date().toISOString()
   };
+  if (!newProduct.name || !Number.isFinite(newProduct.price) || newProduct.price < 0) return res.status(400).json({ error: "A product name and valid non-negative price are required." });
   db.products.push(newProduct);
-  saveDb(db);
+  await writeDraftStore(db);
   res.json(newProduct);
-});
+}));
 
-app.put("/api/products/:id", (req, res) => {
-  const db = getDb();
+app.put("/api/products/:id", asyncRoute(async (req, res) => {
+  const db = await readDraftStore();
   const index = db.products.findIndex((p: any) => p.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({ error: "Product not found" });
-  }
+  if (index === -1) return res.status(404).json({ error: "Product not found in draft." });
+  const current = db.products[index];
   const updated = {
-    ...db.products[index],
-    name: req.body.name !== undefined ? req.body.name : db.products[index].name,
-    price: req.body.price !== undefined ? Number(req.body.price) : db.products[index].price,
-    description: req.body.description !== undefined ? req.body.description : db.products[index].description,
-    categoryId: req.body.categoryId !== undefined ? req.body.categoryId : db.products[index].categoryId,
-    images: req.body.images !== undefined ? req.body.images : db.products[index].images,
-    isFeatured: req.body.isFeatured !== undefined ? Boolean(req.body.isFeatured) : db.products[index].isFeatured,
-    availability: req.body.availability !== undefined ? req.body.availability : db.products[index].availability,
-    sortOrder: req.body.sortOrder !== undefined ? Number(req.body.sortOrder) : db.products[index].sortOrder,
+    ...current,
+    name: req.body.name !== undefined ? String(req.body.name).trim() : current.name,
+    price: req.body.price !== undefined ? Number(req.body.price) : current.price,
+    description: req.body.description !== undefined ? String(req.body.description) : current.description,
+    categoryId: req.body.categoryId !== undefined ? String(req.body.categoryId) : current.categoryId,
+    images: req.body.images !== undefined && Array.isArray(req.body.images) ? req.body.images : current.images,
+    isFeatured: req.body.isFeatured !== undefined ? Boolean(req.body.isFeatured) : current.isFeatured,
+    availability: req.body.availability !== undefined ? req.body.availability : current.availability,
+    sortOrder: req.body.sortOrder !== undefined ? Number(req.body.sortOrder) : current.sortOrder
   };
+  if (!updated.name || !Number.isFinite(updated.price) || updated.price < 0) return res.status(400).json({ error: "A product name and valid non-negative price are required." });
   db.products[index] = updated;
-  saveDb(db);
+  await writeDraftStore(db);
   res.json(updated);
-});
+}));
 
-app.delete("/api/products/:id", (req, res) => {
-  const db = getDb();
+app.delete("/api/products/:id", asyncRoute(async (req, res) => {
+  const db = await readDraftStore();
   db.products = db.products.filter((p: any) => p.id !== req.params.id);
-  saveDb(db);
+  await writeDraftStore(db);
   res.json({ success: true });
-});
+}));
 
-// Categories CRUD
-app.post("/api/categories", (req, res) => {
-  const db = getDb();
-  const newCat = {
-    id: "cat-" + Date.now(),
-    name: req.body.name,
-    description: req.body.description,
-    image: req.body.image,
+app.post("/api/categories", asyncRoute(async (req, res) => {
+  const db = await readDraftStore();
+  const category = {
+    id: "cat-" + crypto.randomUUID(),
+    name: String(req.body.name || "").trim(),
+    description: String(req.body.description || ""),
+    image: String(req.body.image || ""),
     sortOrder: Number(req.body.sortOrder) || db.categories.length + 1
   };
-  db.categories.push(newCat);
-  saveDb(db);
-  res.json(newCat);
-});
+  if (!category.name) return res.status(400).json({ error: "Category name is required." });
+  db.categories.push(category);
+  await writeDraftStore(db);
+  res.json(category);
+}));
 
-app.put("/api/categories/:id", (req, res) => {
-  const db = getDb();
+app.put("/api/categories/:id", asyncRoute(async (req, res) => {
+  const db = await readDraftStore();
   const index = db.categories.findIndex((c: any) => c.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({ error: "Category not found" });
-  }
+  if (index === -1) return res.status(404).json({ error: "Category not found in draft." });
+  const current = db.categories[index];
   const updated = {
-    ...db.categories[index],
-    name: req.body.name !== undefined ? req.body.name : db.categories[index].name,
-    description: req.body.description !== undefined ? req.body.description : db.categories[index].description,
-    image: req.body.image !== undefined ? req.body.image : db.categories[index].image,
-    sortOrder: req.body.sortOrder !== undefined ? Number(req.body.sortOrder) : db.categories[index].sortOrder,
+    ...current,
+    name: req.body.name !== undefined ? String(req.body.name).trim() : current.name,
+    description: req.body.description !== undefined ? String(req.body.description) : current.description,
+    image: req.body.image !== undefined ? String(req.body.image) : current.image,
+    sortOrder: req.body.sortOrder !== undefined ? Number(req.body.sortOrder) : current.sortOrder
   };
+  if (!updated.name) return res.status(400).json({ error: "Category name is required." });
   db.categories[index] = updated;
-  saveDb(db);
+  await writeDraftStore(db);
   res.json(updated);
-});
+}));
 
-app.delete("/api/categories/:id", (req, res) => {
-  const db = getDb();
+app.delete("/api/categories/:id", asyncRoute(async (req, res) => {
+  const db = await readDraftStore();
   db.categories = db.categories.filter((c: any) => c.id !== req.params.id);
-  saveDb(db);
+  await writeDraftStore(db);
   res.json({ success: true });
-});
+}));
 
-// Content Management
-app.post("/api/content", (req, res) => {
-  const db = getDb();
-  db.content = {
-    ...db.content,
-    ...req.body
-  };
-  saveDb(db);
+app.post("/api/content", asyncRoute(async (req, res) => {
+  const db = await readDraftStore();
+  db.content = { ...db.content, ...req.body };
+  await writeDraftStore(db);
   res.json(db.content);
-});
+}));
 
-// Testimonials management
-app.post("/api/testimonials", (req, res) => {
-  const db = getDb();
-  if (!db.content.testimonials) {
-    db.content.testimonials = [];
-  }
-  const newTestimonial = {
-    id: "t-" + Date.now(),
-    author: req.body.author,
-    location: req.body.location,
-    comment: req.body.comment,
-    rating: Number(req.body.rating) || 5
+app.post("/api/testimonials", asyncRoute(async (req, res) => {
+  const db = await readDraftStore();
+  const testimonials = Array.isArray(db.content.testimonials) ? db.content.testimonials : [];
+  const testimonial = {
+    id: "t-" + crypto.randomUUID(),
+    author: String(req.body.author || "").trim(),
+    location: String(req.body.location || "").trim(),
+    comment: String(req.body.comment || "").trim(),
+    rating: Math.max(1, Math.min(5, Number(req.body.rating) || 5))
   };
-  db.content.testimonials.push(newTestimonial);
-  saveDb(db);
-  res.json(newTestimonial);
-});
+  if (!testimonial.author || !testimonial.comment) return res.status(400).json({ error: "A testimonial author and comment are required." });
+  db.content.testimonials = [...testimonials, testimonial];
+  await writeDraftStore(db);
+  res.json(testimonial);
+}));
 
-app.delete("/api/testimonials/:id", (req, res) => {
-  const db = getDb();
-  if (db.content.testimonials) {
-    db.content.testimonials = db.content.testimonials.filter((t: any) => t.id !== req.params.id);
-    saveDb(db);
-  }
+app.delete("/api/testimonials/:id", asyncRoute(async (req, res) => {
+  const db = await readDraftStore();
+  db.content.testimonials = (db.content.testimonials || []).filter((t: any) => t.id !== req.params.id);
+  await writeDraftStore(db);
   res.json({ success: true });
-});
+}));
 
 // Authentication Endpoints
 app.post("/api/auth/signup", (req, res) => {
@@ -492,6 +686,25 @@ app.post("/api/paystack/verify", async (req, res) => {
   }
 });
 
+// Keep API errors machine-readable; never return internal stack traces to the browser.
+app.use('/api', (error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'Each image must be 8 MB or smaller.' });
+  }
+  const status = Number(error?.status) >= 400 && Number(error.status) < 600 ? Number(error.status) : 500;
+  const message = status === 500 ? 'The request could not be completed. Check the server configuration and try again.' : String(error?.message || 'Request failed.');
+  console.error('API request failed:', error?.message || error);
+  res.status(status).json({ error: message });
+});
+
+export { app };
+
+// Vercel serves the built frontend as static assets and imports this Express app for /api/*.
+// Do not start a listening server or initialize Vite inside a serverless function.
+if (!process.env.VERCEL) {
+  startServer();
+}
+
 async function startServer() {
   app.use('/uploads', express.static(UPLOADS_DIR));
 
@@ -504,14 +717,12 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
+    app.get('*all', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Cole World Furniture server running on http://localhost:${PORT}`);
+    console.log("Cole World Furniture server running on http://localhost:" + PORT);
   });
 }
-
-startServer();

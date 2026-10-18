@@ -45,7 +45,94 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
   });
 
   const [uploading, setUploading] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState('');
+
+  const persistOpenForms = async () => {
+    if (editingProduct || productForm.name.trim()) {
+      const url = editingProduct ? '/api/products/' + editingProduct.id : '/api/products';
+      const response = await fetch(url, {
+        method: editingProduct ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productForm)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'The product draft could not be saved.');
+      setEditingProduct(null);
+      setProductForm({
+        name: '',
+        price: 0,
+        description: '',
+        categoryId: storeData.categories[0]?.id || '',
+        images: [''],
+        isFeatured: false,
+        availability: 'In Stock',
+        sortOrder: 1
+      });
+    }
+
+    if (editingCategory || categoryForm.name.trim()) {
+      const url = editingCategory ? '/api/categories/' + editingCategory.id : '/api/categories';
+      const response = await fetch(url, {
+        method: editingCategory ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryForm)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'The category draft could not be saved.');
+      setEditingCategory(null);
+      setCategoryForm({ name: '', description: '', image: '', sortOrder: 1 });
+    }
+
+    if (testimonialForm.author.trim() && testimonialForm.comment.trim()) {
+      const response = await fetch('/api/testimonials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testimonialForm)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'The testimonial draft could not be saved.');
+      setTestimonialForm({ author: '', location: '', comment: '', rating: 5 });
+    }
+
+    const contentResponse = await fetch('/api/content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(contentForm)
+    });
+    const contentResult = await contentResponse.json().catch(() => ({}));
+    if (!contentResponse.ok) throw new Error(contentResult.error || 'Could not save the website content draft.');
+  };
+
+  const handleSaveDraft = async () => {
+    setSavingDraft(true);
+    try {
+      await persistOpenForms();
+      setMessage('Draft saved securely. Visitors will not see these changes until you publish.');
+      await onRefreshData();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Draft could not be saved. Please try again.');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  const handlePublishChanges = async () => {
+    setPublishing(true);
+    try {
+      await persistOpenForms();
+      const response = await fetch('/api/admin/publish', { method: 'POST' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Publish failed. Your saved draft is still available.');
+      setMessage('Changes published successfully. The public website now uses the published content.');
+      await onRefreshData();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Publishing failed. Your draft has been preserved.');
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   // Handle Product Save
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -207,13 +294,19 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
         method: 'POST',
         body: formData
       });
-      const data = await res.json();
-      if (data.urls && data.urls.length > 0) {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Image upload failed.');
+      if (Array.isArray(data.urls) && data.urls.length > 0) {
         callback(data.urls[0]);
+        setMessage('Image uploaded successfully.');
+      } else {
+        throw new Error('The server did not return an image URL.');
       }
     } catch (err) {
       console.error(err);
+      setMessage(err instanceof Error ? err.message : 'Image upload failed. Please try again.');
     } finally {
+      e.target.value = '';
       setUploading(false);
     }
   };
@@ -231,13 +324,31 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
           <h1 className="text-2xl sm:text-3xl font-serif font-bold">Cole World Admin Center</h1>
           <p className="text-xs text-[#a8a29e]">Manage products, categories, homepage content, and customer testimonials.</p>
         </div>
-        <button
-          onClick={() => setCurrentView('home')}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#292524] text-white text-xs font-semibold hover:bg-[#b45309] transition-colors self-start sm:self-auto"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Website</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={handleSaveDraft}
+            disabled={savingDraft || publishing || uploading}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#292524] text-white text-xs font-semibold hover:bg-[#57534e] disabled:opacity-50 transition-colors"
+          >
+            <Save className="w-4 h-4" />
+            <span>{savingDraft ? 'Saving Draft...' : 'Save Draft'}</span>
+          </button>
+          <button
+            onClick={handlePublishChanges}
+            disabled={savingDraft || publishing || uploading}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#b45309] text-white text-xs font-semibold hover:bg-[#92400e] disabled:opacity-50 transition-colors"
+          >
+            <Check className="w-4 h-4" />
+            <span>{publishing ? 'Publishing...' : 'Publish Changes'}</span>
+          </button>
+          <button
+            onClick={() => setCurrentView('home')}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#292524] text-white text-xs font-semibold hover:bg-[#57534e] transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Website</span>
+          </button>
+        </div>
       </div>
 
       {message && (

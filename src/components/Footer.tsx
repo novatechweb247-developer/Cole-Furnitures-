@@ -122,9 +122,6 @@ export function Footer({ setCurrentView, whatsappNumber }: FooterProps) {
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-[#78716c] gap-4">
           <p>© {new Date().getFullYear()} Cole World Furniture & Interior Designs. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <button onClick={() => { setCurrentView('admin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:text-[#a8a29e] transition-colors">
-              Admin Center
-            </button>
             <span>Jos, Plateau State, Nigeria</span>
           </div>
         </div>

@@ -22,8 +22,11 @@ import { defaultStoreData } from './data/defaultStore';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
+  const [adminAccessDenied, setAdminAccessDenied] = useState(false);
   const [currentView, setCurrentView] = useState('home');
   const [storeData, setStoreData] = useState<StoreData | null>(() => {
+    // Never hydrate private admin views from public browser cache.
+    if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') return null;
     try {
       const cached = localStorage.getItem('cole_world_store_cache');
       return cached ? JSON.parse(cached) : null;
@@ -82,21 +85,43 @@ export default function App() {
 
   const WHATSAPP_NUMBER = '07065712674';
 
+  // The public storefront uses the root path; unknown direct paths are reserved for private admin access.
+  const isAdminRoute = window.location.pathname !== '/' && window.location.pathname !== '/index.html';
+
   const fetchStoreData = async () => {
     try {
-      const res = await fetch('/api/store');
+      if (isAdminRoute) {
+        const sessionResponse = await fetch('/api/admin/session', { cache: 'no-store', credentials: 'same-origin' });
+        if (!sessionResponse.ok) {
+          setAdminAccessDenied(true);
+          setStoreData(null);
+          return;
+        }
+      }
+      const res = await fetch(isAdminRoute ? '/api/admin/draft' : '/api/store', { cache: 'no-store', credentials: 'same-origin' });
+      if (isAdminRoute && !res.ok) {
+        setAdminAccessDenied(true);
+        setStoreData(null);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
+        setAdminAccessDenied(false);
         setStoreData(data);
-        localStorage.setItem('cole_world_store_cache', JSON.stringify(data));
+        if (!isAdminRoute) localStorage.setItem('cole_world_store_cache', JSON.stringify(data));
         return;
       }
     } catch (err) {
-      console.warn('API store fetch failed, using fallback/cache', err);
+      console.warn('API store fetch failed', err);
+      if (isAdminRoute) {
+        setAdminAccessDenied(true);
+        setStoreData(null);
+        return;
+      }
     }
 
-    // Fallback if API not available (e.g. Vercel static deployment)
-    if (!storeData) {
+    // Public-only fallback for local previews. Admin access never uses cached or default data.
+    if (!isAdminRoute && !storeData) {
       setStoreData(defaultStoreData as StoreData);
     }
   };
@@ -204,6 +229,40 @@ export default function App() {
     return <LoadingScreen onComplete={() => setLoading(false)} />;
   }
 
+  if (isAdminRoute && adminAccessDenied) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#faf9f6] text-[#1c1917] px-6">
+        <div className="max-w-md text-center space-y-3">
+          <h1 className="text-2xl font-serif font-bold">Admin Center unavailable</h1>
+          <p className="text-sm text-[#78716c]">The private route is not configured or this session is not authorized. Open the configured private URL and confirm the server environment settings.</p>
+          <button onClick={() => { window.location.href = '/'; }} className="px-5 py-2.5 rounded-full bg-[#1c1917] text-white text-sm font-semibold">Return to website</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAdminRoute) {
+    if (!storeData) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#faf9f6] text-[#1c1917]">
+          <div className="text-center space-y-3">
+            <h2 className="text-xl font-serif font-bold">Loading Admin Center...</h2>
+            <p className="text-xs text-[#78716c]">Loading saved website content.</p>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-screen bg-[#faf9f6] text-[#1c1917]">
+        <AdminCenter
+          storeData={storeData}
+          onRefreshData={fetchStoreData}
+          setCurrentView={() => { window.location.href = '/'; }}
+        />
+      </div>
+    );
+  }
+
   if (!storeData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#faf9f6] text-[#1c1917]">
@@ -288,13 +347,6 @@ export default function App() {
               <ContactView whatsappNumber={WHATSAPP_NUMBER} />
             )}
 
-            {currentView === 'admin' && (
-              <AdminCenter
-                storeData={storeData}
-                onRefreshData={fetchStoreData}
-                setCurrentView={setCurrentView}
-              />
-            )}
           </motion.div>
         </AnimatePresence>
       </main>
