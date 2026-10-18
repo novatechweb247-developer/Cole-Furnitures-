@@ -10,6 +10,7 @@ import { AboutView } from './components/AboutView';
 import { ServicesView } from './components/ServicesView';
 import { ContactView } from './components/ContactView';
 import { AdminCenter } from './components/AdminCenter';
+import { Admin } from './pages/Admin';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { StickyMobileFooter } from './components/StickyMobileFooter';
 import { CartModal } from './components/CartModal';
@@ -224,6 +225,10 @@ export default function App() {
   };
 
   const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  if (isAdminRoute) {
+    return <Admin onExit={() => { window.location.href = '/'; }} />;
+  }
 
   if (loading) {
     return <LoadingScreen onComplete={() => setLoading(false)} />;
