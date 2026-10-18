@@ -16,6 +16,7 @@ export function ContactView({ whatsappNumber }: ContactViewProps) {
     if (submitting) return;
     setSubmitting(true);
     setSubmitMessage('');
+    const whatsappWindow = window.open('about:blank', '_blank');
     const text = `Hello Cole World Furniture & Interior Designs, my name is ${visitorName}. ${visitorMessage}`;
     try {
       const response = await fetch('/api/enquiries', {
@@ -33,7 +34,13 @@ export function ContactView({ whatsappNumber }: ContactViewProps) {
       setSubmitMessage('We could not save the enquiry just now. Opening WhatsApp so you can still contact our team.');
     } finally {
       setSubmitting(false);
-      window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
+      if (whatsappWindow) {
+        whatsappWindow.opener = null;
+        whatsappWindow.location.href = whatsappUrl;
+      } else {
+        setSubmitMessage(current => current + ' If WhatsApp did not open, use the WhatsApp contact button on this page.');
+      }
     }
   };
 
