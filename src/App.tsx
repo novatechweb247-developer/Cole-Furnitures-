@@ -20,6 +20,7 @@ import { FavoritesModal } from './components/FavoritesModal';
 import { AnimatePresence, motion, useScroll, useSpring } from 'motion/react';
 
 import { defaultStoreData } from './data/defaultStore';
+import { supabase } from './lib/supabase';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -90,43 +91,42 @@ export default function App() {
   const isAdminRoute = window.location.pathname !== '/' && window.location.pathname !== '/index.html';
 
   const fetchStoreData = async () => {
+    // Admin has its own email/password flow; never call the legacy private-URL session API.
+    if (isAdminRoute) return;
+
     try {
-      if (isAdminRoute) {
-        const sessionResponse = await fetch('/api/admin/session', { cache: 'no-store', credentials: 'same-origin' });
-        if (!sessionResponse.ok) {
-          setAdminAccessDenied(true);
-          setStoreData(null);
+      // Published Cole content is read from Cole's own Supabase project.
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('cole_store')
+          .select('data')
+          .eq('id', 'main')
+          .maybeSingle();
+
+        if (!error && data?.data) {
+          const published = data.data as StoreData;
+          setStoreData(published);
+          localStorage.setItem('cole_world_store_cache', JSON.stringify(published));
+          setAdminAccessDenied(false);
           return;
         }
+        if (error) console.warn('Published Supabase store could not be loaded:', error.message);
       }
-      const res = await fetch(isAdminRoute ? '/api/admin/draft' : '/api/store', { cache: 'no-store', credentials: 'same-origin' });
-      if (isAdminRoute && !res.ok) {
-        setAdminAccessDenied(true);
-        setStoreData(null);
-        return;
-      }
+
+      // Compatibility fallback while the public database is unavailable.
+      const res = await fetch('/api/store', { cache: 'no-store', credentials: 'same-origin' });
       if (res.ok) {
         const data = await res.json();
-        setAdminAccessDenied(false);
         setStoreData(data);
-        if (!isAdminRoute) localStorage.setItem('cole_world_store_cache', JSON.stringify(data));
+        localStorage.setItem('cole_world_store_cache', JSON.stringify(data));
         return;
       }
     } catch (err) {
-      console.warn('API store fetch failed', err);
-      if (isAdminRoute) {
-        setAdminAccessDenied(true);
-        setStoreData(null);
-        return;
-      }
+      console.warn('Store fetch failed', err);
     }
 
-    // Public-only fallback for local previews. Admin access never uses cached or default data.
-    if (!isAdminRoute && !storeData) {
-      setStoreData(defaultStoreData as StoreData);
-    }
+    if (!storeData) setStoreData(defaultStoreData as StoreData);
   };
-
   useEffect(() => {
     fetchStoreData();
   }, []);
