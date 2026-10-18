@@ -216,7 +216,7 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
         setTimeout(() => setMessage(''), 3000);
       }
     } catch (err) {
-      console.error(err);
+      setMessage(err instanceof Error ? err.message : 'Product could not be saved.');
     }
   };
 
@@ -275,7 +275,7 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
         setTimeout(() => setMessage(''), 3000);
       }
     } catch (err) {
-      console.error(err);
+      setMessage(err instanceof Error ? err.message : 'Category could not be saved.');
     }
   };
 
@@ -314,7 +314,7 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
         setTimeout(() => setMessage(''), 3000);
       }
     } catch (err) {
-      console.error(err);
+      setMessage(err instanceof Error ? err.message : 'Website content could not be saved.');
     }
   };
 
@@ -338,7 +338,7 @@ export function AdminCenter({ storeData, onRefreshData, setCurrentView }: AdminC
         setTimeout(() => setMessage(''), 3000);
       }
     } catch (err) {
-      console.error(err);
+      setMessage(err instanceof Error ? err.message : 'Testimonial could not be saved.');
     }
   };
 
