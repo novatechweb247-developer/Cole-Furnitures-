@@ -1,11 +1,55 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import multer from "multer";
 import { createServer as createViteServer } from "vite";
 
 const app = express();
 const PORT = 3000;
+
+// Admin access uses a deployment-only secret path plus a short-lived signed cookie.
+// Configure ADMIN_SECRET_PATH and ADMIN_SESSION_SECRET only in the hosting environment.
+const ADMIN_SECRET_PATH = process.env.ADMIN_SECRET_PATH;
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET;
+const ADMIN_COOKIE = 'cole_admin_session';
+const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+
+function createAdminSession(timestamp: number) {
+  const payload = String(timestamp);
+  const signature = crypto.createHmac('sha256', ADMIN_SESSION_SECRET || '').update(payload).digest('hex');
+  return payload + '.' + signature;
+}
+
+function isValidAdminSession(value: string | undefined) {
+  if (!value || !ADMIN_SESSION_SECRET) return false;
+  const [timestampText, signature] = value.split('.');
+  const timestamp = Number(timestampText);
+  if (!Number.isFinite(timestamp) || !signature || Date.now() - timestamp > ADMIN_SESSION_TTL_MS || timestamp > Date.now() + 60_000) return false;
+  const expected = crypto.createHmac('sha256', ADMIN_SESSION_SECRET).update(timestampText).digest('hex');
+  const actualBuffer = Buffer.from(signature, 'hex');
+  const expectedBuffer = Buffer.from(expected, 'hex');
+  return actualBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+app.use((req, res, next) => {
+  if (ADMIN_SECRET_PATH && ADMIN_SESSION_SECRET && req.method === 'GET' && req.path === ADMIN_SECRET_PATH) {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    res.setHeader('Set-Cookie', ADMIN_COOKIE + '=' + createAdminSession(Date.now()) + '; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800' + secure);
+  }
+  next();
+});
+
+// Guard all admin mutation endpoints, including uploads. Public read-only storefront requests remain public.
+app.use('/api', (req, res, next) => {
+  const adminMutation = /^(POST|PUT|PATCH|DELETE)$/i.test(req.method) && /^\\/(upload|products|categories|content|testimonials)(?:\\/|$)/.test(req.path);
+  if (!adminMutation) return next();
+  const cookieHeader = req.headers.cookie || '';
+  const sessionCookie = cookieHeader.split(';').map((part) => part.trim()).find((part) => part.startsWith(ADMIN_COOKIE + '='));
+  const sessionValue = sessionCookie ? decodeURIComponent(sessionCookie.slice(ADMIN_COOKIE.length + 1)) : undefined;
+  if (!isValidAdminSession(sessionValue)) return res.status(404).json({ error: 'Not found' });
+  next();
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
