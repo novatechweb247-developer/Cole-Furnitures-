@@ -1048,6 +1048,22 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             </div>
           )}
 
+          {/* Public page editorial images */}
+          {active === 'About page' && settings && (
+            <section className={panel + ' mb-8'}>
+              <h2 className="font-serif text-2xl">About page editorial image</h2>
+              <p className="mt-2 mb-5 text-sm text-[#6B5546]">This controls the large image shown on the public About page.</p>
+              {renderImageUpload('About page image', (settings as any).about_page_image_url || settings.editorial_image_url || '', 'about-page', (file) => uploadImage(file, { kind: 'about-page' }), (v) => setSettings({ ...settings, about_page_image_url: v } as any), 'about-page-image-input')}
+            </section>
+          )}
+          {active === 'Interior Design' && settings && (
+            <section className={panel + ' mb-8'}>
+              <h2 className="font-serif text-2xl">Interior Design page image</h2>
+              <p className="mt-2 mb-5 text-sm text-[#6B5546]">This controls the main image on the public Interior Design page.</p>
+              {renderImageUpload('Interior Design page image', (settings as any).interior_page_image_url || '', 'interior-page', (file) => uploadImage(file, { kind: 'interior-page' }), (v) => setSettings({ ...settings, interior_page_image_url: v } as any), 'interior-page-image-input')}
+            </section>
+          )}
+
           {/* PUBLIC PAGE CONTENT: About and Interior Design */}
           {active === 'About page' && settings && (
             <section className={panel}>
@@ -1206,6 +1222,18 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                   ))}
                 </div>
               </section>
+
+              {/* Every homepage editorial visual is editable here and published to the same content fields used by the public page. */}
+              {settings && (
+                <section className={panel}>
+                  <h2 className="font-serif text-2xl">Homepage editorial images</h2>
+                  <p className="mt-2 mb-6 text-sm text-[#6B5546]">These images map directly to the two editorial sections displayed on the homepage.</p>
+                  <div className="space-y-7">
+                    {renderImageUpload('Homepage About / Brand image', (settings as any).home_about_image_url || '', 'home-about', (file) => uploadImage(file, { kind: 'home-about' }), (v) => setSettings({ ...settings, home_about_image_url: v } as any), 'home-about-image-input')}
+                    {renderImageUpload('Homepage Interior Design image', (settings as any).home_services_image_url || '', 'home-services', (file) => uploadImage(file, { kind: 'home-services' }), (v) => setSettings({ ...settings, home_services_image_url: v } as any), 'home-services-image-input')}
+                  </div>
+                </section>
+              )}
 
               {/* Homepage Editorial Image */}
               {settings && (
@@ -1366,6 +1394,29 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                 >
                   + Add Product
                 </button>
+              </div>
+
+              <div className="mb-8 rounded-2xl border border-[#D8CEC0] p-5">
+                <h3 className="font-serif text-xl">Collection category images</h3>
+                <p className="mt-2 mb-5 text-sm text-[#6B5546]">These are the category-card images used on the public homepage and collection browsing. Replace an image here to update that category everywhere.</p>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  {categoryRows.map((category, index) => (
+                    <div key={category.id} className="rounded-xl border border-[#D8CEC0] p-4">
+                      <p className="mb-3 text-sm font-semibold">{category.name}</p>
+                      {renderImageUpload(
+                        category.name + ' category image',
+                        category.image || '',
+                        'category-' + index,
+                        (file) => uploadImage(file, { kind: 'category', index }),
+                        (v) => setCategoryRows(prev => prev.map((row, i) => i === index ? { ...row, image: v } : row)),
+                        'category-image-input-' + index
+                      )}
+                      <div className="mt-3">
+                        {field('Category description', category.description || '', (v) => setCategoryRows(prev => prev.map((row, i) => i === index ? { ...row, description: v } : row))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-6">
