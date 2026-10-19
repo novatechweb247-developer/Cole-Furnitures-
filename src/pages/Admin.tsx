@@ -1235,28 +1235,6 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                 </section>
               )}
 
-              {/* Homepage Editorial Image */}
-              {settings && (
-                <section className={panel}>
-                  <div className="mb-6">
-                    <h2 className="font-serif text-2xl">Homepage Editorial Image</h2>
-                    <p className="text-xs text-[#6B5546] mt-1">
-                      Displayed on the homepage below the editorial showcase intro.
-                    </p>
-                  </div>
-
-                  {renderImageUpload(
-                    'Editorial Showcase Image',
-                    settings.editorial_image_url,
-                    'editorial',
-                    (file) => uploadImage(file, { kind: 'editorial' }),
-                    (v) => setSettings({ ...settings, editorial_image_url: v }),
-                    'editorial-upload-input'
-                  )}
-
-
-                </section>
-              )}
             </div>
           )}
 
@@ -1412,7 +1390,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                         'category-image-input-' + index
                       )}
                       <div className="mt-3">
-                        {field('Category description', category.description || '', (v) => setCategoryRows(prev => prev.map((row, i) => i === index ? { ...row, description: v } : row))}
+                        {field('Category description', category.description || '', (v) => setCategoryRows(prev => prev.map((row, i) => i === index ? { ...row, description: v } : row)))}
                       </div>
                     </div>
                   ))}
