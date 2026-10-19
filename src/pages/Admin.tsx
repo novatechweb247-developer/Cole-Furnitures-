@@ -497,6 +497,9 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       map_url: target.map_url || '',
       description: target.description || '',
       editorial_image_url: target.editorial_image_url || '',
+    };
+    const draftValues = {
+      ...values,
       about_title: (target as any).about_title || '',
       about_text: (target as any).about_text || target.description || '',
       interior_design_title: (target as any).interior_design_title || '',
@@ -505,7 +508,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
     const payload: any = {
       id: 'main',
-      draft_data: values,
+      draft_data: draftValues,
       updated_at: new Date().toISOString(),
     };
 
@@ -1018,7 +1021,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
               <p className="mt-2 mb-6 text-sm leading-6 text-[#6B5546]">Manage the heading and description displayed on the public Interior Design page.</p>
               {field('Page heading', (settings as any).interior_design_title || 'Interior Design Services', (v) => setSettings(prev => prev ? ({ ...prev, interior_design_title: v } as any) : prev))}
               <div className="mt-5">
-                {field('Page description', (settings as any).interior_design_text || '', (v) => setSettings(prev => prev ? ({ ...prev, interior_design_text: v } as any) : prev)}
+                {field('Page description', (settings as any).interior_design_text || '', (v) => setSettings(prev => prev ? ({ ...prev, interior_design_text: v } as any) : prev))}
               </div>
             </section>
           )}
