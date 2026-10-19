@@ -40,6 +40,39 @@ begin
     updated_at = now()
   where s.id='main';
 
+  -- Publish page copy and every editable editorial/category visual.
+  update public.cole_store s
+  set data = jsonb_set(
+    jsonb_set(
+      jsonb_set(
+        jsonb_set(
+          jsonb_set(
+            jsonb_set(
+              jsonb_set(
+                jsonb_set(
+                  jsonb_set(coalesce(s.data, '{}'::jsonb), '{content,aboutTitle}',
+                    to_jsonb(coalesce(nullif(st.draft_data->>'about_title',''), s.data#>>'{content,aboutTitle}', 'About Cole World Furniture')), true),
+                  '{content,aboutText}',
+                    to_jsonb(coalesce(nullif(st.draft_data->>'about_text',''), st.description, s.data#>>'{content,aboutText}')), true),
+                '{content,interiorDesignTitle}',
+                  to_jsonb(coalesce(nullif(st.draft_data->>'interior_design_title',''), s.data#>>'{content,interiorDesignTitle}', 'Interior Design Services')), true),
+              '{content,interiorDesignText}',
+                to_jsonb(coalesce(nullif(st.draft_data->>'interior_design_text',''), s.data#>>'{content,interiorDesignText}')), true),
+            '{content,visuals,aboutImage}',
+              to_jsonb(coalesce(nullif(st.draft_data->>'home_about_image_url',''), s.data#>>'{content,visuals,aboutImage}')), true),
+          '{content,visuals,servicesImage}',
+            to_jsonb(coalesce(nullif(st.draft_data->>'home_services_image_url',''), s.data#>>'{content,visuals,servicesImage}')), true),
+        '{content,visuals,aboutPageImage}',
+          to_jsonb(coalesce(nullif(st.draft_data->>'about_page_image_url',''), st.editorial_image_url, s.data#>>'{content,visuals,aboutPageImage}')), true),
+      '{content,visuals,servicesPageImage}',
+        to_jsonb(coalesce(nullif(st.draft_data->>'interior_page_image_url',''), s.data#>>'{content,visuals,servicesPageImage}')), true),
+    '{categories}',
+      coalesce(nullif(st.draft_data->'categories', 'null'::jsonb), s.data->'categories', '[]'::jsonb),
+    true),
+    updated_at=now()
+  from public.site_settings st
+  where s.id='main' and st.id='main' and st.is_published=true;
+
   update public.cole_store s
   set data = jsonb_set(
     s.data,
