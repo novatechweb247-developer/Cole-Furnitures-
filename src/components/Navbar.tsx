@@ -190,32 +190,39 @@ export function Navbar({
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden bg-[#faf9f6] border-b border-[#e7e5e4] overflow-hidden"
+            initial={{ opacity: 0, height: 0, y: -12 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -10 }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            className="lg:hidden bg-[#faf9f6]/98 backdrop-blur-xl border-b border-[#e7e5e4] overflow-hidden shadow-xl"
           >
             <div className="px-4 py-6 space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentView === item.id;
                 return (
-                  <button
+                  <motion.button
                     key={item.id}
+                    initial={{ opacity: 0, x: -14 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.24, delay: navItems.findIndex((navItem) => navItem.id === item.id) * 0.045 }}
                     onClick={() => {
                       setCurrentView(item.id);
                       setMobileMenuOpen(false);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
+                    whileHover={{ x: 5 }}
+                    whileTap={{ scale: 0.985 }}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all ${
                       isActive 
-                        ? 'bg-[#1c1917] text-[#faf9f6]' 
-                        : 'text-[#44403c] hover:bg-[#e7e5e4]/50'
+                        ? 'bg-[#1c1917] text-[#faf9f6] shadow-md' 
+                        : 'text-[#44403c] hover:bg-[#e7e5e4]/70'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
                     {item.label}
-                  </button>
+                    <motion.span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#b45309]" animate={{ scale: isActive ? 1 : 0, opacity: isActive ? 1 : 0 }} />
+                  </motion.button>
                 );
               })}
 
