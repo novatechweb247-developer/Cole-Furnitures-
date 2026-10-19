@@ -69,7 +69,7 @@ export function ServicesView({ whatsappNumber, business, content }: ServicesView
 
         <div className="relative aspect-4/3 rounded-2xl overflow-hidden shadow-lg">
           <img
-            src="https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&q=80&w=1000"
+            src={content?.visuals?.servicesPageImage || "https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&q=80&w=1000"}
             alt="Interior Design Studio"
             className="w-full h-full object-cover"
           />
