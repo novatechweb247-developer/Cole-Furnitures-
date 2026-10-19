@@ -151,6 +151,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [productRows, setProductRows] = useState<ProductRow[]>([]);
   const [galleryRows, setGalleryRows] = useState<GalleryRow[]>([]);
+  const [categoryRows, setCategoryRows] = useState<Array<{id:string;name:string;description:string;image:string;sortOrder:number}>>([]);
   const [counts, setCounts] = useState({ products: 0, gallery: 0 });
 
   const verifyAdmin = useCallback(async (userId: string) => {
@@ -167,7 +168,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const loadData = useCallback(async () => {
     if (!supabase) return;
     setError('');
-    const [hero, site, products, gallery, productRowsResult, galleryRowsResult] =
+    const [hero, site, products, gallery, productRowsResult, galleryRowsResult, storeResult] =
       await Promise.all([
         supabase.from('hero_slides').select('*').order('slide_number'),
         supabase.from('site_settings').select('*').eq('id', 'main').maybeSingle(),
@@ -175,6 +176,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         supabase.from('gallery_items').select('id', { count: 'exact', head: true }),
         supabase.from('products').select('*').order('sort_order'),
         supabase.from('gallery_items').select('*').order('sort_order'),
+        supabase.from('cole_store').select('data').eq('id', 'main').maybeSingle(),
       ]);
 
     const firstError =
@@ -183,7 +185,8 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       products.error ||
       gallery.error ||
       productRowsResult.error ||
-      galleryRowsResult.error;
+      galleryRowsResult.error ||
+      storeResult.error;
 
     if (firstError) throw firstError;
 
@@ -214,7 +217,18 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
     const siteRow = site.data as SiteSettings | null;
     if (siteRow) {
-      setSettings({ ...siteRow, ...(siteRow.draft_data || {}) } as SiteSettings);
+      const store = storeResult.data?.data as any;
+      const draft = siteRow.draft_data || {};
+      const visuals = store?.content?.visuals || {};
+      setSettings({
+        ...siteRow,
+        ...draft,
+        home_about_image_url: draft.home_about_image_url || visuals.aboutImage || '',
+        home_services_image_url: draft.home_services_image_url || visuals.servicesImage || '',
+        about_page_image_url: draft.about_page_image_url || visuals.aboutPageImage || siteRow.editorial_image_url || '',
+        interior_page_image_url: draft.interior_page_image_url || visuals.servicesPageImage || '',
+      } as SiteSettings);
+      setCategoryRows((draft.categories || store?.categories || []).map((row: any) => ({ ...row })));
     } else {
       setSettings({
         id: 'main',
@@ -333,6 +347,11 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     file: File | undefined,
     target:
       | { kind: 'editorial' }
+      | { kind: 'home-about' }
+      | { kind: 'home-services' }
+      | { kind: 'about-page' }
+      | { kind: 'interior-page' }
+      | { kind: 'category'; index: number }
       | { kind: 'logo' }
       | { kind: 'hero'; slideNumber: number }
       | { kind: 'product'; index: number }
@@ -347,6 +366,16 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const targetKey =
       target.kind === 'editorial'
         ? 'editorial'
+        : target.kind === 'home-about'
+        ? 'home-about'
+        : target.kind === 'home-services'
+        ? 'home-services'
+        : target.kind === 'about-page'
+        ? 'about-page'
+        : target.kind === 'interior-page'
+        ? 'interior-page'
+        : target.kind === 'category'
+        ? `category-${target.index}`
         : target.kind === 'logo'
         ? 'logo'
         : target.kind === 'hero'
@@ -397,7 +426,18 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       }
 
       // Apply to state and persist draft immediately
-      if (target.kind === 'editorial') {
+      if (target.kind === 'home-about' || target.kind === 'home-services' || target.kind === 'about-page' || target.kind === 'interior-page') {
+        if (settings) {
+          const key = target.kind === 'home-about' ? 'home_about_image_url' : target.kind === 'home-services' ? 'home_services_image_url' : target.kind === 'about-page' ? 'about_page_image_url' : 'interior_page_image_url';
+          const updated = { ...settings, [key]: publicUrl };
+          setSettings(updated as SiteSettings);
+          await saveSettings(false, updated as SiteSettings);
+        }
+      } else if (target.kind === 'category') {
+        const updated = categoryRows.map((row, i) => i === target.index ? { ...row, image: publicUrl } : row);
+        setCategoryRows(updated);
+        if (settings) await saveSettings(false, { ...settings, categories: updated } as any);
+      } else if (target.kind === 'editorial') {
         if (settings) {
           const updated = { ...settings, editorial_image_url: publicUrl };
           setSettings(updated);
@@ -504,6 +544,11 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       about_text: (target as any).about_text || target.description || '',
       interior_design_title: (target as any).interior_design_title || '',
       interior_design_text: (target as any).interior_design_text || '',
+      home_about_image_url: (target as any).home_about_image_url || '',
+      home_services_image_url: (target as any).home_services_image_url || '',
+      about_page_image_url: (target as any).about_page_image_url || target.editorial_image_url || '',
+      interior_page_image_url: (target as any).interior_page_image_url || '',
+      categories: (target as any).categories || categoryRows,
     };
 
     const payload: any = {
