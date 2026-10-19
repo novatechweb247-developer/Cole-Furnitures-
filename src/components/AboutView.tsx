@@ -1,11 +1,16 @@
 import React from 'react';
+import { StoreBusiness, StoreContent } from '../types';
 import { MapPin, Phone, MessageSquare, ShieldCheck, CheckCircle } from 'lucide-react';
 
 interface AboutViewProps {
   whatsappNumber: string;
+  business?: StoreBusiness;
+  content?: StoreContent;
 }
 
-export function AboutView({ whatsappNumber }: AboutViewProps) {
+export function AboutView({ whatsappNumber, business, content }: AboutViewProps) {
+  const businessName = business?.name || 'Cole World Furniture & Interior Designs';
+  const businessAddress = business?.address || 'No. 10 St Saviour Avenue, Lendere Kabong, Jos 930105, Plateau, Nigeria';
   const handleWhatsApp = () => {
     window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hello Cole World Furniture & Interior Designs, I would like to make an enquiry about your brand and services.")}`, '_blank');
   };
@@ -16,7 +21,7 @@ export function AboutView({ whatsappNumber }: AboutViewProps) {
       {/* Header */}
       <div className="border-b border-[#e7e5e4] pb-8 text-center max-w-2xl mx-auto space-y-2">
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#b45309]">Brand Story</span>
-        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#1c1917]">About Cole World Furniture & Interior Designs</h1>
+        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#1c1917]">{content?.aboutTitle || `About ${businessName}`}</h1>
         <p className="text-sm text-[#78716c]">Crafting sophistication and comfort from Jos, Plateau State, Nigeria.</p>
       </div>
 
@@ -28,7 +33,7 @@ export function AboutView({ whatsappNumber }: AboutViewProps) {
             Handcrafted Furniture & Bespoke Interior Solutions
           </h2>
           <p className="text-base text-[#57534e] leading-relaxed">
-            Cole World Furniture & Interior Designs is dedicated to bringing sophistication, comfort, and durability to homes and offices. Based at No. 10 St Saviour Avenue, Lendere Kabong, Jos, Plateau, Nigeria, we pride ourselves on exceptional woodworking, premium upholstery, and personalized interior styling tailored to our clients' unique tastes.
+            {content?.aboutText || business?.description || `${businessName} is dedicated to bringing sophistication, comfort, and durability to homes and offices. Based at ${businessAddress}, we pride ourselves on exceptional woodworking, premium upholstery, and personalized interior styling tailored to our clients' unique tastes.`}
           </p>
           <div className="space-y-3 pt-2">
             <div className="flex items-start gap-3">
@@ -49,7 +54,7 @@ export function AboutView({ whatsappNumber }: AboutViewProps) {
         <div className="space-y-6">
           <div className="relative aspect-4/3 rounded-2xl overflow-hidden shadow-md">
             <img
-              src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&q=80&w=1000"
+              src={business?.editorialImageUrl || "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&q=80&w=1000"}
               alt="Furniture Craftsmanship"
               className="w-full h-full object-cover"
             />
@@ -61,10 +66,10 @@ export function AboutView({ whatsappNumber }: AboutViewProps) {
       <div className="bg-[#1c1917] text-white rounded-3xl p-8 sm:p-12 shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
         <div className="space-y-3 max-w-xl">
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#f59e0b]">Visit Our Showroom</span>
-          <h3 className="text-2xl font-serif font-bold">Cole World Furniture & Interior Designs</h3>
+          <h3 className="text-2xl font-serif font-bold">{businessName}</h3>
           <div className="flex items-start gap-2 text-sm text-[#d6d3d1]">
             <MapPin className="w-5 h-5 text-[#b45309] shrink-0 mt-0.5" />
-            <span>No. 10 St Saviour Avenue, Lendere Kabong, Jos 930105, Plateau, Nigeria</span>
+            <span>{businessAddress}</span>
           </div>
         </div>
         <div>

@@ -1,13 +1,17 @@
 import React from 'react';
+import { StoreBusiness, StoreContent } from '../types';
 import { Palette, MessageSquare, CheckCircle, ArrowRight, Shield } from 'lucide-react';
 
 interface ServicesViewProps {
   whatsappNumber: string;
+  business?: StoreBusiness;
+  content?: StoreContent;
 }
 
-export function ServicesView({ whatsappNumber }: ServicesViewProps) {
+export function ServicesView({ whatsappNumber, business, content }: ServicesViewProps) {
+  const businessName = business?.name || 'Cole World Furniture & Interior Designs';
   const handleWhatsApp = () => {
-    const text = "Hello Cole World Furniture & Interior Designs, I would like to book an interior design consultation.";
+    const text = `Hello ${businessName}, I would like to book an interior design consultation.`;
     window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -36,8 +40,8 @@ export function ServicesView({ whatsappNumber }: ServicesViewProps) {
       {/* Header */}
       <div className="border-b border-[#e7e5e4] pb-8 text-center max-w-2xl mx-auto space-y-2">
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#b45309]">Bespoke Services</span>
-        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#1c1917]">Interior Design & Spatial Planning</h1>
-        <p className="text-sm text-[#78716c]">Comprehensive design solutions tailored for homes, offices, and commercial lounges in Jos and beyond.</p>
+        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#1c1917]">{content?.interiorDesignTitle || 'Interior Design & Spatial Planning'}</h1>
+        <p className="text-sm text-[#78716c]">{content?.interiorDesignText || 'Comprehensive design solutions tailored for homes, offices, and commercial lounges in Jos and beyond.'}</p>
       </div>
 
       {/* Hero Service Banner */}
@@ -50,7 +54,7 @@ export function ServicesView({ whatsappNumber }: ServicesViewProps) {
             Professional Interior Design & Spatial Planning
           </h2>
           <p className="text-base text-[#57534e] leading-relaxed">
-            We offer comprehensive interior design services for homes, corporate offices, hotels, and lounges. From initial spatial layout planning and 3D visualization to bespoke furniture fabrication and final styling, our team ensures every corner reflects elegance and functional harmony.
+            {content?.interiorDesignText || 'We offer comprehensive interior design services for homes, corporate offices, hotels, and lounges. From initial spatial layout planning and 3D visualization to bespoke furniture fabrication and final styling, our team ensures every corner reflects elegance and functional harmony.'}
           </p>
           <div className="pt-2">
             <button
