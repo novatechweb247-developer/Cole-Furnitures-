@@ -291,6 +291,7 @@ export default function App() {
         currentView={currentView}
         setCurrentView={setCurrentView}
         whatsappNumber={WHATSAPP_NUMBER}
+        business={storeData.business}
         cartCount={totalCartCount}
         favoritesCount={favorites.length}
         currentUser={currentUser}
