@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Menu, X, Phone, MessageSquare, ShoppingBag, Info, Palette, Home as HomeIcon, Heart, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User } from '../types';
+import { StoreBusiness, User } from '../types';
 
 interface NavbarProps {
   currentView: string;
   setCurrentView: (view: string) => void;
   whatsappNumber: string;
+  business?: StoreBusiness;
   cartCount: number;
   favoritesCount: number;
   currentUser: User | null;
@@ -19,6 +20,7 @@ export function Navbar({
   currentView,
   setCurrentView,
   whatsappNumber,
+  business,
   cartCount,
   favoritesCount,
   currentUser,
@@ -53,15 +55,15 @@ export function Navbar({
             onClick={() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             className="flex items-center gap-3 text-left group cursor-pointer"
           >
-            <div className="w-11 h-11 rounded-full bg-[#1c1917] text-[#faf9f6] flex items-center justify-center font-serif font-bold text-lg shadow-md group-hover:bg-[#b45309] transition-colors">
-              CW
+            <div className="w-11 h-11 rounded-full bg-[#1c1917] text-[#faf9f6] flex items-center justify-center overflow-hidden font-serif font-bold text-lg shadow-md group-hover:bg-[#b45309] transition-colors">
+              {business?.logoUrl ? <img src={business.logoUrl} alt={`${business?.name || 'Cole'} logo`} className="h-full w-full object-contain" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : 'CW'}
             </div>
             <div>
               <span className="block font-serif font-bold text-lg sm:text-xl text-[#1c1917] tracking-tight">
-                Cole World
+                {business?.name || 'Cole World'}
               </span>
               <span className="block text-[11px] font-sans uppercase tracking-[0.15em] text-[#78716c]">
-                Furniture & Interior Designs
+                {business?.tagline || 'Furniture & Interior Designs'}
               </span>
             </div>
           </button>
