@@ -284,7 +284,7 @@ export function HomeView({ content, products, categories, setCurrentView, onSele
           </div>
           <div className="relative aspect-4/3 rounded-2xl overflow-hidden shadow-lg">
             <img
-              src="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=1000"
+              src={content.visuals?.aboutImage || "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=1000"}
               alt="Showroom Interior"
               className="w-full h-full object-cover"
             />
@@ -297,7 +297,7 @@ export function HomeView({ content, products, categories, setCurrentView, onSele
         <div className="bg-[#1c1917] text-white rounded-3xl p-8 sm:p-14 relative overflow-hidden">
           <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-20 hidden lg:block">
             <img
-              src="https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&q=80&w=1000"
+              src={content.visuals?.servicesImage || "https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&q=80&w=1000"}
               alt="Interior Service"
               className="w-full h-full object-cover"
             />
