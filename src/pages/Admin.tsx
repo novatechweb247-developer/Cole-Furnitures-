@@ -4,8 +4,8 @@ import {
   LayoutDashboard,
   PanelsTopLeft,
   Sofa,
-  Images,
-  Inbox,
+  BookOpen,
+  Palette,
   Settings,
   LogOut,
   Save,
@@ -22,8 +22,8 @@ type Section =
   | 'Overview'
   | 'Homepage'
   | 'Collections'
-  | 'Gallery'
-  | 'Enquiries'
+  | 'About page'
+  | 'Interior Design'
   | 'Website logo'
   | 'Business details';
 
@@ -110,14 +110,14 @@ const sections: { label: Section; icon: React.ReactNode; description: string }[]
     description: 'Furniture products, descriptions, dimensions, and categories.',
   },
   {
-    label: 'Gallery',
-    icon: <Images size={18} />,
-    description: 'Showroom and project photographs.',
+    label: 'About page',
+    icon: <BookOpen size={18} />,
+    description: 'Edit the public About page copy and editorial image.',
   },
   {
-    label: 'Enquiries',
-    icon: <Inbox size={18} />,
-    description: 'Customer messages saved from the public contact form.',
+    label: 'Interior Design',
+    icon: <Palette size={18} />,
+    description: 'Edit the public Interior Design page copy.',
   },
   {
     label: 'Website logo',
@@ -149,10 +149,9 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const [error, setError] = useState('');
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
-  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [productRows, setProductRows] = useState<ProductRow[]>([]);
   const [galleryRows, setGalleryRows] = useState<GalleryRow[]>([]);
-  const [counts, setCounts] = useState({ products: 0, gallery: 0, enquiries: 0 });
+  const [counts, setCounts] = useState({ products: 0, gallery: 0 });
 
   const verifyAdmin = useCallback(async (userId: string) => {
     if (!supabase) return false;
@@ -168,11 +167,10 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const loadData = useCallback(async () => {
     if (!supabase) return;
     setError('');
-    const [hero, site, inbox, products, gallery, productRowsResult, galleryRowsResult] =
+    const [hero, site, products, gallery, productRowsResult, galleryRowsResult] =
       await Promise.all([
         supabase.from('hero_slides').select('*').order('slide_number'),
         supabase.from('site_settings').select('*').eq('id', 'main').maybeSingle(),
-        supabase.from('enquiries').select('*').order('created_at', { ascending: false }).limit(200),
         supabase.from('products').select('id', { count: 'exact', head: true }),
         supabase.from('gallery_items').select('id', { count: 'exact', head: true }),
         supabase.from('products').select('*').order('sort_order'),
@@ -182,7 +180,6 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const firstError =
       hero.error ||
       site.error ||
-      inbox.error ||
       products.error ||
       gallery.error ||
       productRowsResult.error ||
@@ -237,7 +234,6 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       });
     }
 
-    setEnquiries((inbox.data || []) as Enquiry[]);
     setProductRows(
       ((productRowsResult.data || []) as ProductRow[]).map((row) => ({
         ...row,
@@ -253,7 +249,6 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     setCounts({
       products: products.count || (productRowsResult.data?.length || 0),
       gallery: gallery.count || (galleryRowsResult.data?.length || 0),
-      enquiries: inbox.data?.length || 0,
     });
   }, []);
 
@@ -502,6 +497,10 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       map_url: target.map_url || '',
       description: target.description || '',
       editorial_image_url: target.editorial_image_url || '',
+      about_title: (target as any).about_title || '',
+      about_text: (target as any).about_text || target.description || '',
+      interior_design_title: (target as any).interior_design_title || '',
+      interior_design_text: (target as any).interior_design_text || '',
     };
 
     const payload: any = {
@@ -992,14 +991,36 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                 { label: 'Homepage banner', value: 1 },
                 { label: 'Products', value: counts.products },
                 { label: 'Gallery images', value: counts.gallery },
-                { label: 'Recent enquiries', value: counts.enquiries },
-              ].map((x) => (
+                              ].map((x) => (
                 <div key={x.label} className={panel}>
                   <p className="text-sm text-[#6B5546]">{x.label}</p>
                   <p className="mt-2 font-serif text-3xl text-[#1C1511]">{x.value}</p>
                 </div>
               ))}
             </div>
+          )}
+
+          {/* PUBLIC PAGE CONTENT: About and Interior Design */}
+          {active === 'About page' && settings && (
+            <section className={panel}>
+              <h2 className="font-serif text-2xl">About page content</h2>
+              <p className="mt-2 mb-6 text-sm leading-6 text-[#6B5546]">These fields control the copy displayed on the public About page. The editorial image is managed under Homepage.</p>
+              {field('About page heading', (settings as any).about_title || 'About ' + (settings.business_name || 'Cole World'), (v) => setSettings(prev => prev ? ({ ...prev, about_title: v } as any) : prev))}
+              <div className="mt-5">
+                {field('About page text', (settings as any).about_text ?? settings.description, (v) => setSettings(prev => prev ? ({ ...prev, about_text: v } as any) : prev))}
+              </div>
+            </section>
+          )}
+
+          {active === 'Interior Design' && settings && (
+            <section className={panel}>
+              <h2 className="font-serif text-2xl">Interior Design page content</h2>
+              <p className="mt-2 mb-6 text-sm leading-6 text-[#6B5546]">Manage the heading and description displayed on the public Interior Design page.</p>
+              {field('Page heading', (settings as any).interior_design_title || 'Interior Design Services', (v) => setSettings(prev => prev ? ({ ...prev, interior_design_title: v } as any) : prev))}
+              <div className="mt-5">
+                {field('Page description', (settings as any).interior_design_text || '', (v) => setSettings(prev => prev ? ({ ...prev, interior_design_text: v } as any) : prev)}
+              </div>
+            </section>
           )}
 
           {/* WEBSITE LOGO SECTION */}
@@ -1208,7 +1229,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
           )}
 
           {/* ENQUIRIES SECTION */}
-          {active === 'Enquiries' && (
+          {false && active === 'Enquiries' && (
             <section className={panel}>
               <h2 className="mb-5 font-serif text-2xl">Customer enquiries</h2>
               {enquiries.length === 0 ? (
@@ -1445,7 +1466,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
           )}
 
           {/* GALLERY SECTION */}
-          {active === 'Gallery' && (
+          {active === 'Homepage' && (
             <section className={panel}>
               <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div>
