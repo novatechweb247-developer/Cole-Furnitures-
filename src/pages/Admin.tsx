@@ -102,7 +102,7 @@ const sections: { label: Section; icon: React.ReactNode; description: string }[]
   {
     label: 'Homepage',
     icon: <PanelsTopLeft size={18} />,
-    description: 'Edit the three hero slides and homepage editorial image.',
+    description: 'Edit the homepage banner and editorial image shown on the public website.',
   },
   {
     label: 'Collections',
@@ -190,7 +190,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
     if (firstError) throw firstError;
 
-    // Always guarantee exactly 3 hero slides exist
+    // Keep compatibility with the three legacy database rows, while the Cole public homepage uses one banner.
     const rawSlides = (hero.data || []) as HeroSlide[];
     const mergedSlides: HeroSlide[] = [1, 2, 3].map((num) => {
       const existing = rawSlides.find((s) => s.slide_number === num);
@@ -637,7 +637,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
     // Do not reload between writes: keep unsaved edits from every tab intact.
     await Promise.all([
-      ...slides.slice(0, 3).map((slide) => saveSlide(slide, publish, false)),
+      ...(slides[0] ? [saveSlide(slides[0], publish, false)] : []),
       saveSettings(publish, settings, false),
       ...productRows.map((item) => saveProduct(item, publish, false)),
       ...galleryRows.map((item) => saveGalleryItem(item, publish, false)),
@@ -813,7 +813,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
           onSubmit={signIn}
           className="w-full max-w-md rounded-3xl border border-[#D8CEC0] bg-white p-8 shadow-xl"
         >
-          <p className="font-serif text-2xl tracking-[0.18em]">TATARI</p>
+          <p className="font-serif text-2xl tracking-[0.18em]">COLE</p>
           <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-[#8B6A37]">
             Website Admin
           </p>
@@ -885,7 +885,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       <header className="sticky top-0 z-20 border-b border-[#D8CEC0] bg-[#F6F1E8]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <div>
-            <p className="font-serif text-xl tracking-[0.18em]">TATARI</p>
+            <p className="font-serif text-xl tracking-[0.18em]">COLE</p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-[#8B6A37]">
               Website Admin Center
             </p>
@@ -954,7 +954,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         <main className="min-w-0">
           <div className="mb-8">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-[#8B6A37]">
-              Cole Furnitures Furniture
+              Cole World Furniture &amp; Interior Designs
             </p>
             <h1 className="font-serif text-3xl sm:text-4xl">
               {active === 'Overview' ? 'Welcome to your Admin Center.' : active}
@@ -989,7 +989,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
           {active === 'Overview' && (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {[
-                { label: 'Hero slides', value: slides.length },
+                { label: 'Homepage banner', value: 1 },
                 { label: 'Products', value: counts.products },
                 { label: 'Gallery images', value: counts.gallery },
                 { label: 'Recent enquiries', value: counts.enquiries },
@@ -1021,37 +1021,35 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                 'contain'
               )}
               <p className="mt-4 rounded-xl bg-[#F6F1E8] p-4 text-xs leading-5 text-[#6B5546]">
-                The published logo appears in the website navigation and footer. Until one is published, the existing TATARI text brand remains visible.
+                The published logo appears in the website navigation and footer. Until one is published, the Cole World text brand remains visible.
               </p>
             </section>
           )}
-          {/* HOMEPAGE SECTION (3 Hero Slides & Editorial Image) */}
+          {/* HOMEPAGE SECTION (Public Hero & Editorial Image) */}
           {active === 'Homepage' && (
             <div className="space-y-8">
-              {/* Exactly 3 Hero Slides */}
+              {/* Cole uses one public homepage hero, not a rotating slide carousel. */}
               <section className={panel}>
                 <div className="mb-6 flex items-center justify-between">
                   <div>
-                    <h2 className="font-serif text-2xl">Hero slides (exactly 3)</h2>
+                    <h2 className="font-serif text-2xl">Homepage hero</h2>
                     <p className="text-xs text-[#6B5546] mt-1">
-                      Each slide is independently editable and can be saved as draft or published.
+                      These fields update the single hero banner shown on the public homepage when you publish.
                     </p>
                   </div>
                   <span className="rounded-full bg-[#F6F1E8] px-3 py-1 text-xs font-semibold text-[#8B6A37]">
-                    3/3 fixed slides
+                    Single hero
                   </span>
                 </div>
 
                 <div className="space-y-8">
-                  {slides.slice(0, 3).map((slide) => (
+                  {slides.slice(0, 1).map((slide) => (
                     <div
                       key={slide.slide_number}
                       className="rounded-2xl border border-[#D8CEC0] p-6 bg-[#F6F1E8]/20"
                     >
                       <div className="mb-4 flex items-center justify-between">
-                        <h3 className="font-serif text-xl font-medium">
-                          Slide {slide.slide_number}
-                        </h3>
+                        <h3 className="font-serif text-xl font-medium">Homepage banner</h3>
                         <span
                           className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${
                             slide.is_published

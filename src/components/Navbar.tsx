@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, Phone, MessageSquare, ShoppingBag, Grid, Info, Palette, Home as HomeIcon, Heart, User as UserIcon } from 'lucide-react';
+import { Menu, X, Phone, MessageSquare, ShoppingBag, Info, Palette, Home as HomeIcon, Heart, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User } from '../types';
 
@@ -37,8 +37,7 @@ export function Navbar({
 
   const navItems = [
     { id: 'home', label: 'Home', icon: HomeIcon },
-    { id: 'shop', label: 'Shop', icon: ShoppingBag },
-    { id: 'categories', label: 'Categories', icon: Grid },
+    { id: 'shop', label: 'Collections', icon: ShoppingBag },
     { id: 'about', label: 'About', icon: Info },
     { id: 'services', label: 'Interior Design', icon: Palette },
     { id: 'contact', label: 'Contact', icon: Phone },
