@@ -42,6 +42,14 @@ export interface PromoSection {
   image: string;
 }
 
+export interface StoreVisuals {
+  heroImage?: string;
+  aboutImage?: string;
+  servicesImage?: string;
+  aboutPageImage?: string;
+  servicesPageImage?: string;
+}
+
 export interface StoreContent {
   heroTitle: string;
   heroSubtitle: string;
@@ -49,6 +57,7 @@ export interface StoreContent {
   aboutText: string;
   interiorDesignTitle: string;
   interiorDesignText: string;
+  visuals?: StoreVisuals;
   whyChooseUs: WhyChooseUsItem[];
   promo: PromoSection;
   testimonials: Testimonial[];
@@ -110,4 +119,3 @@ export interface Order {
   paystackReference?: string;
   createdAt: string;
 }
-
