@@ -25,8 +25,8 @@ export function Footer({ setCurrentView, whatsappNumber, business }: FooterProps
           {/* Brand Column */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#b45309] text-white flex items-center justify-center font-serif font-bold text-lg">
-                CW
+              <div className="w-10 h-10 rounded-full bg-[#b45309] text-white flex items-center justify-center overflow-hidden font-serif font-bold text-lg">
+                {business?.logoUrl ? <img src={business.logoUrl} alt={`${businessName} logo`} className="h-full w-full object-contain" onError={(event) => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement!.textContent = 'CW'; }} /> : 'CW'}
               </div>
               <div>
                 <span className="block font-serif font-bold text-lg text-white">
