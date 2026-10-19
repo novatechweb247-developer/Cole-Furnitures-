@@ -56,7 +56,7 @@ export function Navbar({
             className="flex items-center gap-3 text-left group cursor-pointer"
           >
             <div className="w-11 h-11 rounded-full bg-[#1c1917] text-[#faf9f6] flex items-center justify-center overflow-hidden font-serif font-bold text-lg shadow-md group-hover:bg-[#b45309] transition-colors">
-              {business?.logoUrl ? <img src={business.logoUrl} alt={`${business?.name || 'Cole'} logo`} className="h-full w-full object-contain" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : 'CW'}
+              {business?.logoUrl ? <img src={business.logoUrl} alt={`${business?.name || 'Cole'} logo`} className="h-full w-full object-contain" onError={(event) => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement!.textContent = 'CW'; }} /> : 'CW'}
             </div>
             <div>
               <span className="block font-serif font-bold text-lg sm:text-xl text-[#1c1917] tracking-tight">
