@@ -54,7 +54,7 @@ export function AboutView({ whatsappNumber, business, content }: AboutViewProps)
         <div className="space-y-6">
           <div className="relative aspect-4/3 rounded-2xl overflow-hidden shadow-md">
             <img
-              src={business?.editorialImageUrl || "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&q=80&w=1000"}
+              src={content?.visuals?.aboutPageImage || business?.editorialImageUrl || "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&q=80&w=1000"}
               alt="Furniture Craftsmanship"
               className="w-full h-full object-cover"
             />
