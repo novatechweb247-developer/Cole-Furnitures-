@@ -422,6 +422,31 @@ export function HomeView({ content, products, categories, setCurrentView, onSele
         )}
       </section>
 
+      {/* Published project gallery managed from Admin Center */}
+      {gallery.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="text-center max-w-2xl mx-auto">
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#b45309]">Our Work</span>
+            <h2 className="text-3xl sm:text-4xl font-serif font-bold text-[#1c1917] mt-2">Project Gallery</h2>
+            <p className="text-sm text-[#78716c] mt-3">Furniture and interior projects selected by our team.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[...gallery].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((item) => (
+              <article key={item.id} className="group overflow-hidden rounded-2xl border border-[#e7e5e4] bg-white shadow-sm hover:shadow-lg transition-shadow">
+                <div className="aspect-[4/3] overflow-hidden bg-[#f5f5f4]">
+                  <img src={item.image} alt={item.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" onError={(event) => { event.currentTarget.style.opacity = '0'; }} />
+                </div>
+                <div className="p-5 space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#b45309]">{item.category}</p>
+                  <h3 className="font-serif text-xl font-semibold text-[#1c1917]">{item.title}</h3>
+                  {item.description && <p className="text-sm leading-relaxed text-[#78716c]">{item.description}</p>}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Strong WhatsApp CTA */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-gradient-to-r from-[#1c1917] to-[#292524] text-white rounded-3xl p-10 sm:p-16 text-center space-y-6 shadow-xl relative overflow-hidden">
