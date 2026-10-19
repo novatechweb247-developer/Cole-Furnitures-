@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { MessageSquare, ArrowRight, ShieldCheck, Sparkles, MapPin, Star, CheckCircle, Phone, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
-import { StoreContent, Product, Category } from '../types';
+import { StoreContent, Product, Category, StoreBusiness } from '../types';
 import { motion } from 'motion/react';
 import { ScrollPopUp } from './ScrollPopUp';
 
@@ -11,9 +11,12 @@ interface HomeViewProps {
   setCurrentView: (view: string) => void;
   onSelectProduct: (product: Product) => void;
   whatsappNumber: string;
+  business?: StoreBusiness;
+  gallery?: Array<{ id: string; title: string; category: string; image: string; description: string; sortOrder: number }>;
 }
 
-export function HomeView({ content, products, categories, setCurrentView, onSelectProduct, whatsappNumber }: HomeViewProps) {
+export function HomeView({ content, products, categories, setCurrentView, onSelectProduct, whatsappNumber, business, gallery = [] }: HomeViewProps) {
+  const businessName = business?.name || 'Cole World Furniture & Interior Designs';
   const featuredProducts = products.filter(p => p.isFeatured);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +60,7 @@ export function HomeView({ content, products, categories, setCurrentView, onSele
             
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#b45309]/20 border border-[#b45309]/40 text-[#f59e0b] text-xs font-semibold tracking-wider uppercase">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Jos, Plateau State, Nigeria</span>
+              <span>{business?.address || 'Jos, Plateau State, Nigeria'}</span>
             </div>
 
             <motion.h1
@@ -108,7 +111,7 @@ export function HomeView({ content, products, categories, setCurrentView, onSele
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-[#b45309]" />
-                <span>No. 10 St Saviour Avenue, Jos</span>
+                <span>{business?.address || 'No. 10 St Saviour Avenue, Jos'}</span>
               </div>
             </div>
 
@@ -427,7 +430,7 @@ export function HomeView({ content, products, categories, setCurrentView, onSele
             <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[#f59e0b]">Direct Assistance</span>
             <h2 className="text-3xl sm:text-5xl font-serif font-bold">Ready to Elevate Your Space?</h2>
             <p className="text-sm sm:text-base text-[#d6d3d1]">
-              Contact Cole World Furniture & Interior Designs directly via WhatsApp for custom furniture orders, catalog inquiries, and interior consultations.
+              Contact {businessName} directly via WhatsApp for custom furniture orders, catalogue enquiries, and interior consultations.
             </p>
             <div className="pt-4 flex flex-wrap justify-center gap-4">
               <button
@@ -435,7 +438,7 @@ export function HomeView({ content, products, categories, setCurrentView, onSele
                 className="flex items-center gap-3 px-8 py-4 rounded-full bg-[#25D366] text-white font-semibold text-base shadow-lg hover:bg-[#20ba5a] transition-all"
               >
                 <MessageSquare className="w-5 h-5 fill-current" />
-                <span>Chat on WhatsApp (0706 571 2674)</span>
+                <span>Chat on WhatsApp ({business?.phone || '0706 571 2674'})</span>
               </button>
             </div>
           </div>
