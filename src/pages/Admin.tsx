@@ -190,7 +190,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
     if (firstError) throw firstError;
 
-    // Always guarantee exactly 3 hero slides exist
+    // Keep compatibility with the three legacy database rows, while the Cole public homepage uses one banner.
     const rawSlides = (hero.data || []) as HeroSlide[];
     const mergedSlides: HeroSlide[] = [1, 2, 3].map((num) => {
       const existing = rawSlides.find((s) => s.slide_number === num);
@@ -813,7 +813,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
           onSubmit={signIn}
           className="w-full max-w-md rounded-3xl border border-[#D8CEC0] bg-white p-8 shadow-xl"
         >
-          <p className="font-serif text-2xl tracking-[0.18em]">TATARI</p>
+          <p className="font-serif text-2xl tracking-[0.18em]">COLE</p>
           <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-[#8B6A37]">
             Website Admin
           </p>
@@ -885,7 +885,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       <header className="sticky top-0 z-20 border-b border-[#D8CEC0] bg-[#F6F1E8]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <div>
-            <p className="font-serif text-xl tracking-[0.18em]">TATARI</p>
+            <p className="font-serif text-xl tracking-[0.18em]">COLE</p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-[#8B6A37]">
               Website Admin Center
             </p>
@@ -954,7 +954,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         <main className="min-w-0">
           <div className="mb-8">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-[#8B6A37]">
-              Cole Furnitures Furniture
+              Cole World Furniture &amp; Interior Designs
             </p>
             <h1 className="font-serif text-3xl sm:text-4xl">
               {active === 'Overview' ? 'Welcome to your Admin Center.' : active}
@@ -989,7 +989,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
           {active === 'Overview' && (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {[
-                { label: 'Hero slides', value: slides.length },
+                { label: 'Homepage banner', value: 1 },
                 { label: 'Products', value: counts.products },
                 { label: 'Gallery images', value: counts.gallery },
                 { label: 'Recent enquiries', value: counts.enquiries },
