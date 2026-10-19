@@ -1367,8 +1367,8 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                         ({
                                           'living-room': 'Living Room',
                                           bedroom: 'Bedroom',
-                                          custom: 'Custom Furniture',
-                                          other: 'Other Furniture',
+                                          'dining-kitchen': 'Dining & Kitchen',
+                                          'office-study': 'Office & Study',
                                         } as Record<string, string>)[e.target.value] ||
                                         'Furniture',
                                     }
@@ -1379,8 +1379,8 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                         >
                           <option value="living-room">Living Room</option>
                           <option value="bedroom">Bedroom</option>
-                          <option value="custom">Custom Furniture</option>
-                          <option value="other">Other Furniture</option>
+                          <option value="dining-kitchen">Dining &amp; Kitchen</option>
+                          <option value="office-study">Office &amp; Study</option>
                         </select>
                       </label>
 
