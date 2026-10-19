@@ -311,6 +311,8 @@ export default function App() {
             {currentView === 'home' && (
               <HomeView
                 content={storeData.content}
+                business={storeData.business}
+                gallery={storeData.gallery || []}
                 products={storeData.products}
                 categories={storeData.categories}
                 setCurrentView={setCurrentView}
@@ -341,11 +343,11 @@ export default function App() {
             )}
 
             {currentView === 'about' && (
-              <AboutView whatsappNumber={WHATSAPP_NUMBER} />
+              <AboutView whatsappNumber={WHATSAPP_NUMBER} business={storeData.business} content={storeData.content} />
             )}
 
             {currentView === 'services' && (
-              <ServicesView whatsappNumber={WHATSAPP_NUMBER} />
+              <ServicesView whatsappNumber={WHATSAPP_NUMBER} business={storeData.business} content={storeData.content} />
             )}
 
             {currentView === 'contact' && (
